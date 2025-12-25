@@ -11,7 +11,7 @@ A dashboard for Real Dev Squad admins to monitor team activity, track availabili
 
 ## Tech Stack
 
-- **Framework:** Next.js 15.2.3+ (App Router)
+- **Framework:** Next.js 15.5.9 (App Router)
 - **Language:** TypeScript
 - **Database:** Firestore
 - **Auth:** JWT (private key verification)
@@ -34,6 +34,10 @@ cp .env.example .env.local
 
 # Start dev server
 pnpm dev
+
+# Run scripts
+npx ts-node scripts/test-firestore.ts
+npx ts-node scripts/list-collections.ts
 ```
 
 ## License
