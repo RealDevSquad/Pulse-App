@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ListTodo, FileText, Plane, User, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Clock, Check, ClipboardList } from 'lucide-react';
+import { ListTodo, FileText, Plane, User, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Clock, Check } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ActivityType = 'task_update' | 'task_assigned' | 'task_started' | 'task_completed' | 'progress' | 'ooo' | 'task_request' | 'profile_update' | 'extension_request';
 
@@ -340,7 +341,166 @@ const FILTER_OPTIONS: { value: ActivityFilter; label: string; icon: typeof ListT
 // Key events filter shows: task assigned, task started, task completed, extensions, OOO
 const KEY_EVENT_TYPES: ActivityType[] = ['task_assigned', 'task_started', 'task_completed', 'extension_request', 'ooo'];
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+interface MonthlyCalendarProps {
+  activityMap: Map<string, ActivityDay>;
+  onDayClick: (dateStr: string) => void;
+  selectedDate: string | null;
+}
+
+function MonthlyCalendar({ activityMap, onDayClick, selectedDate }: MonthlyCalendarProps) {
+  const [monthOffset, setMonthOffset] = useState(0);
+  
+  const { days, monthLabel, canGoNext } = useMemo(() => {
+    const today = new Date();
+    const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    // First day of month and how many days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+    
+    // Build array of days (null for empty slots)
+    const daysArray: (string | null)[] = [];
+    
+    // Add empty slots for days before first of month
+    for (let i = 0; i < startDayOfWeek; i++) {
+      daysArray.push(null);
+    }
+    
+    // Add actual days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      daysArray.push(date.toISOString().split('T')[0]);
+    }
+    
+    return {
+      days: daysArray,
+      monthLabel: `${MONTH_NAMES[month]} ${year}`,
+      canGoNext: monthOffset < 0,
+    };
+  }, [monthOffset]);
+  
+  return (
+    <div className="w-full">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setMonthOffset(monthOffset - 1)}
+          className="p-2 hover:bg-muted rounded-lg transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="text-lg font-semibold">{monthLabel}</span>
+        <button
+          onClick={() => setMonthOffset(monthOffset + 1)}
+          disabled={!canGoNext}
+          className={`p-2 rounded-lg transition-colors ${canGoNext ? 'hover:bg-muted' : 'opacity-30 cursor-not-allowed'}`}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+      
+      {/* Day labels */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {DAY_LABELS.map((day, i) => (
+          <div key={i} className="text-center text-xs text-muted-foreground font-medium py-1">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((dateStr, i) => {
+          if (!dateStr) {
+            return <div key={`empty-${i}`} className="aspect-square" />;
+          }
+          
+          const activity = activityMap.get(dateStr);
+          const count = activity?.count || 0;
+          const isSelected = selectedDate === dateStr;
+          const dayNum = new Date(dateStr).getDate();
+          const activities = activity?.activities || [];
+          
+          const styleInfo: DayStyleInfo = {
+            isOOO: activities.some(a => a.type === 'ooo'),
+            hasProgress: activities.some(a => a.type === 'progress'),
+            hasProfile: activities.some(a => a.type === 'profile_update'),
+            hasTaskUpdate: activities.some(a => a.type === 'task_update'),
+            hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
+            hasTaskStarted: activities.some(a => a.type === 'task_started'),
+            hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
+            hasTaskRequest: activities.some(a => a.type === 'task_request'),
+            hasExtension: activities.some(a => a.type === 'extension_request'),
+          };
+          
+          // Get background color based on activity
+          let bgClass = 'bg-muted/50';
+          if (count > 0) {
+            if (styleInfo.isOOO) {
+              bgClass = 'bg-amber-400 dark:bg-amber-500';
+            } else if (styleInfo.hasTaskCompleted) {
+              bgClass = 'bg-emerald-500';
+            } else if (styleInfo.hasTaskAssigned) {
+              bgClass = 'bg-blue-600 dark:bg-blue-500';
+            } else if (styleInfo.hasTaskStarted || styleInfo.hasTaskRequest) {
+              bgClass = 'bg-emerald-200 dark:bg-emerald-800 ring-2 ring-inset ring-emerald-500';
+            } else if (styleInfo.hasProgress) {
+              bgClass = 'bg-emerald-100 dark:bg-emerald-900 ring-2 ring-inset ring-emerald-400';
+            } else if (styleInfo.hasExtension) {
+              bgClass = 'bg-red-100 dark:bg-red-900 ring-2 ring-inset ring-red-400';
+            } else {
+              bgClass = 'bg-emerald-200 dark:bg-emerald-800';
+            }
+          }
+          
+          return (
+            <button
+              key={dateStr}
+              onClick={() => onDayClick(dateStr)}
+              className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-all ${bgClass} ${
+                isSelected ? 'ring-2 ring-foreground ring-offset-2' : ''
+              } ${count > 0 ? 'hover:ring-2 hover:ring-foreground/50' : ''}`}
+            >
+              <span className={count > 0 && (styleInfo.hasTaskCompleted || styleInfo.hasTaskAssigned || styleInfo.isOOO) ? 'text-white' : ''}>
+                {dayNum}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* Compact legend */}
+      <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-muted-foreground justify-center">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-blue-600" />
+          <span>Assigned</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-emerald-500" />
+          <span>Done</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-amber-400" />
+          <span>OOO</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded bg-emerald-200 dark:bg-emerald-800 ring-1 ring-emerald-500" />
+          <span>Active</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ActivityCalendar({ data, className = '', filter: externalFilter, onFilterChange, showFilters = false }: ActivityCalendarProps) {
+  const isMobile = useIsMobile();
   const [hoveredDay, setHoveredDay] = useState<SelectedDay | null>(null);
   const [pinnedDay, setPinnedDay] = useState<SelectedDay | null>(null);
   const [yearOffset, setYearOffset] = useState(0); // 0 = current year, -1 = last year, etc.
@@ -522,162 +682,181 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
         </div>
       )}
       
-      <div className="flex flex-col lg:flex-row gap-4">
-        {/* Calendar */}
-        <div className="flex-1 overflow-x-auto">
-          <div className="inline-block min-w-fit">
-            {/* Year navigation */}
-            <div className="flex items-center justify-between mb-2">
-              <button
-                onClick={() => setYearOffset(yearOffset - 1)}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Previous Year</span>
-              </button>
-              <span className="text-sm font-medium">{yearLabel}</span>
-              <button
-                onClick={() => setYearOffset(yearOffset + 1)}
-                disabled={!canGoNext}
-                className={`flex items-center gap-1 text-sm transition-colors px-2 py-1 rounded ${
-                  canGoNext 
-                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted' 
-                    : 'text-muted-foreground/30 cursor-not-allowed'
-                }`}
-              >
-                <span className="hidden sm:inline">Next Year</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-            
-            {/* Month labels */}
-            <div className="flex text-xs text-muted-foreground mb-1 ml-8 relative h-4">
-            {monthLabels.map((label, i) => (
-              <div
-                key={i}
-                className="absolute"
-                style={{ left: `${label.weekIndex * 14 + 32}px` }}
-              >
-                {label.month}
-              </div>
-            ))}
-          </div>
+      {/* Mobile: Monthly Calendar View */}
+      {isMobile ? (
+        <div className="space-y-4">
+          <MonthlyCalendar
+            activityMap={activityMap}
+            onDayClick={handleDayClick}
+            selectedDate={activeDay?.date || null}
+          />
           
-          <div className="flex gap-0.5 mt-2 mb-2">
-            {/* Day labels */}
-            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mr-1">
-              {DAYS_OF_WEEK.map((day, i) => (
-                <div key={day} className="h-3 flex items-center" style={{ visibility: i % 2 === 1 ? 'visible' : 'hidden' }}>
-                  {day}
+          {/* Detail Panel for mobile */}
+          {activeDay && (
+            <div className="border rounded-lg bg-card">
+              <ActivityDetail selected={activeDay} isPinned={!!pinnedDay} />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Desktop: Horizontal Year View */
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Calendar */}
+          <div className="flex-1 overflow-x-auto">
+            <div className="inline-block min-w-fit">
+              {/* Year navigation */}
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setYearOffset(yearOffset - 1)}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Previous Year</span>
+                </button>
+                <span className="text-sm font-medium">{yearLabel}</span>
+                <button
+                  onClick={() => setYearOffset(yearOffset + 1)}
+                  disabled={!canGoNext}
+                  className={`flex items-center gap-1 text-sm transition-colors px-2 py-1 rounded ${
+                    canGoNext 
+                      ? 'text-muted-foreground hover:text-foreground hover:bg-muted' 
+                      : 'text-muted-foreground/30 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="hidden sm:inline">Next Year</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              
+              {/* Month labels */}
+              <div className="flex text-xs text-muted-foreground mb-1 ml-8 relative h-4">
+              {monthLabels.map((label, i) => (
+                <div
+                  key={i}
+                  className="absolute"
+                  style={{ left: `${label.weekIndex * 14 + 32}px` }}
+                >
+                  {label.month}
                 </div>
               ))}
             </div>
             
-            {/* Calendar grid */}
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-0.5">
-                {week.map((day) => {
-                  const activity = activityMap.get(day.dateStr);
-                  const count = activity?.count || 0;
-                  const isSelected = activeDay?.date === day.dateStr;
-                  const activities = activity?.activities || [];
-                  
-                  const styleInfo: DayStyleInfo = {
-                    isOOO: activities.some(a => a.type === 'ooo'),
-                    hasProgress: activities.some(a => a.type === 'progress'),
-                    hasProfile: activities.some(a => a.type === 'profile_update'),
-                    hasTaskUpdate: activities.some(a => a.type === 'task_update'),
-                    hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
-                    hasTaskStarted: activities.some(a => a.type === 'task_started'),
-                    hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
-                    hasTaskRequest: activities.some(a => a.type === 'task_request'),
-                    hasExtension: activities.some(a => a.type === 'extension_request'),
-                  };
-                  
-                  // Determine what symbol to show in the cell
-                  let cellContent = null;
-                  if (styleInfo.hasTaskCompleted) {
-                    cellContent = <Check className="w-2.5 h-2.5 text-white dark:text-white" strokeWidth={3} />;
-                  } else if (styleInfo.hasTaskStarted) {
-                    cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
-                  } else if (styleInfo.hasTaskAssigned) {
-                    cellContent = <span className="text-[8px] font-bold text-white">A</span>;
-                  } else if (styleInfo.hasTaskRequest) {
-                    cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
-                  }
-                  
-                  return (
-                    <button
-                      key={day.dateStr}
-                      onClick={() => handleDayClick(day.dateStr)}
-                      onMouseEnter={() => handleDayHover(day.dateStr)}
-                      onMouseLeave={handleDayLeave}
-                      className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${buildDayStyle(count, isSelected, styleInfo)}`}
-                      title={`${formatShortDate(day.dateStr)}: ${count} activities`}
-                    >
-                      {cellContent}
-                    </button>
-                  );
-                })}
+            <div className="flex gap-0.5 mt-2 mb-2">
+              {/* Day labels */}
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mr-1">
+                {DAYS_OF_WEEK.map((day, i) => (
+                  <div key={day} className="h-3 flex items-center" style={{ visibility: i % 2 === 1 ? 'visible' : 'hidden' }}>
+                    {day}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          
-          {/* Legend */}
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground justify-end flex-wrap">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-white">A</span>
+              
+              {/* Calendar grid */}
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-0.5">
+                  {week.map((day) => {
+                    const activity = activityMap.get(day.dateStr);
+                    const count = activity?.count || 0;
+                    const isSelected = activeDay?.date === day.dateStr;
+                    const activities = activity?.activities || [];
+                    
+                    const styleInfo: DayStyleInfo = {
+                      isOOO: activities.some(a => a.type === 'ooo'),
+                      hasProgress: activities.some(a => a.type === 'progress'),
+                      hasProfile: activities.some(a => a.type === 'profile_update'),
+                      hasTaskUpdate: activities.some(a => a.type === 'task_update'),
+                      hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
+                      hasTaskStarted: activities.some(a => a.type === 'task_started'),
+                      hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
+                      hasTaskRequest: activities.some(a => a.type === 'task_request'),
+                      hasExtension: activities.some(a => a.type === 'extension_request'),
+                    };
+                    
+                    // Determine what symbol to show in the cell
+                    let cellContent = null;
+                    if (styleInfo.hasTaskCompleted) {
+                      cellContent = <Check className="w-2.5 h-2.5 text-white dark:text-white" strokeWidth={3} />;
+                    } else if (styleInfo.hasTaskStarted) {
+                      cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
+                    } else if (styleInfo.hasTaskAssigned) {
+                      cellContent = <span className="text-[8px] font-bold text-white">A</span>;
+                    } else if (styleInfo.hasTaskRequest) {
+                      cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
+                    }
+                    
+                    return (
+                      <button
+                        key={day.dateStr}
+                        onClick={() => handleDayClick(day.dateStr)}
+                        onMouseEnter={() => handleDayHover(day.dateStr)}
+                        onMouseLeave={handleDayLeave}
+                        className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${buildDayStyle(count, isSelected, styleInfo)}`}
+                        title={`${formatShortDate(day.dateStr)}: ${count} activities`}
+                      >
+                        {cellContent}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground justify-end flex-wrap">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-white">A</span>
+                </div>
+                <span>Assigned</span>
               </div>
-              <span>Assigned</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>
+                </div>
+                <span>Started</span>
               </div>
-              <span>Started</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center">
-                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                </div>
+                <span>Completed</span>
               </div>
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
-                <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>
+                </div>
+                <span>Request</span>
               </div>
-              <span>Request</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-red-400 dark:ring-red-500" />
-              <span>Extension</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-amber-400 dark:bg-amber-500" />
-              <span>OOO</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm bg-blue-400 dark:bg-blue-500" />
-              <span>Task Update</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-400 dark:ring-emerald-500" />
-              <span>Progress</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-transparent border-2 border-dashed border-purple-400 dark:border-purple-500" />
-              <span>Profile</span>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-red-400 dark:ring-red-500" />
+                <span>Extension</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-amber-400 dark:bg-amber-500" />
+                <span>OOO</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-sm bg-blue-400 dark:bg-blue-500" />
+                <span>Task Update</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-400 dark:ring-emerald-500" />
+                <span>Progress</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm bg-transparent border-2 border-dashed border-purple-400 dark:border-purple-500" />
+                <span>Profile</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-        {/* Detail Panel */}
-        <div className="lg:w-72 shrink-0 border rounded-lg bg-card min-h-[200px] max-h-[400px] overflow-y-auto [scrollbar-gutter:stable]">
-          <ActivityDetail selected={activeDay} isPinned={!!pinnedDay} />
+          {/* Detail Panel */}
+          <div className="lg:w-72 shrink-0 border rounded-lg bg-card min-h-[200px] max-h-[400px] overflow-y-auto [scrollbar-gutter:stable]">
+            <ActivityDetail selected={activeDay} isPinned={!!pinnedDay} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
