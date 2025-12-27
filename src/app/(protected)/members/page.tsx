@@ -158,11 +158,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
                   </Badge>
                 )}
               </div>
-              {isRoot && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  <UserInfoPopover userId={user.id} />
-                </div>
-              )}
+              {isRoot && <UserInfoPopover userId={user.id} />}
             </Link>
           );
         })}

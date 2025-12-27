@@ -55,6 +55,7 @@ export function UserInfoPopover({ userId }: UserInfoPopoverProps) {
         <button
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center justify-center rounded-full p-1 hover:bg-muted transition-colors"
           aria-label="View user details"
         >
