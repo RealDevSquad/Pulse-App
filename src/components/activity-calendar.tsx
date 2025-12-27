@@ -341,47 +341,71 @@ const FILTER_OPTIONS: { value: ActivityFilter; label: string; icon: typeof ListT
 // Key events filter shows: task assigned, task started, task completed, extensions, OOO
 const KEY_EVENT_TYPES: ActivityType[] = ['task_assigned', 'task_started', 'task_completed', 'extension_request', 'ooo'];
 
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-interface MonthlyCalendarProps {
+interface MobileCalendarProps {
   activityMap: Map<string, ActivityDay>;
   onDayClick: (dateStr: string) => void;
   selectedDate: string | null;
 }
 
-function MonthlyCalendar({ activityMap, onDayClick, selectedDate }: MonthlyCalendarProps) {
+/** Mobile calendar - same GitHub-style horizontal format but one month at a time */
+function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalendarProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   
-  const { days, monthLabel, canGoNext } = useMemo(() => {
+  const { weeks, monthLabel, canGoNext } = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Target month
     const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
     const year = targetDate.getFullYear();
     const month = targetDate.getMonth();
     
-    // First day of month and how many days
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay();
+    // Get first and last day of month
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth = new Date(year, month + 1, 0);
     
-    // Build array of days (null for empty slots)
-    const daysArray: (string | null)[] = [];
+    // Start from the Sunday of the week containing the first day
+    const startDate = new Date(firstOfMonth);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
     
-    // Add empty slots for days before first of month
-    for (let i = 0; i < startDayOfWeek; i++) {
-      daysArray.push(null);
+    // End on the Saturday of the week containing the last day
+    const endDate = new Date(lastOfMonth);
+    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+    
+    // Don't show days beyond today
+    if (endDate > today) {
+      endDate.setTime(today.getTime());
     }
     
-    // Add actual days
-    for (let d = 1; d <= daysInMonth; d++) {
-      const date = new Date(year, month, d);
-      daysArray.push(date.toISOString().split('T')[0]);
+    // Build weeks array (same format as desktop)
+    const weeksArray: { date: Date; dateStr: string; inMonth: boolean }[][] = [];
+    let currentDate = new Date(startDate);
+    let currentWeek: { date: Date; dateStr: string; inMonth: boolean }[] = [];
+    
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      
+      if (dayOfWeek === 0 && currentWeek.length > 0) {
+        weeksArray.push(currentWeek);
+        currentWeek = [];
+      }
+      
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const inMonth = currentDate.getMonth() === month;
+      currentWeek.push({ date: new Date(currentDate), dateStr, inMonth });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    if (currentWeek.length > 0) {
+      weeksArray.push(currentWeek);
     }
     
     return {
-      days: daysArray,
-      monthLabel: `${MONTH_NAMES[month]} ${year}`,
+      weeks: weeksArray,
+      monthLabel: `${MONTH_NAMES_FULL[month]} ${year}`,
       canGoNext: monthOffset < 0,
     };
   }, [monthOffset]);
@@ -389,110 +413,102 @@ function MonthlyCalendar({ activityMap, onDayClick, selectedDate }: MonthlyCalen
   return (
     <div className="w-full">
       {/* Month navigation */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <button
           onClick={() => setMonthOffset(monthOffset - 1)}
-          className="p-2 hover:bg-muted rounded-lg transition-colors"
+          className="p-1.5 hover:bg-muted rounded transition-colors"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="text-lg font-semibold">{monthLabel}</span>
+        <span className="text-sm font-medium">{monthLabel}</span>
         <button
           onClick={() => setMonthOffset(monthOffset + 1)}
           disabled={!canGoNext}
-          className={`p-2 rounded-lg transition-colors ${canGoNext ? 'hover:bg-muted' : 'opacity-30 cursor-not-allowed'}`}
+          className={`p-1.5 rounded transition-colors ${canGoNext ? 'hover:bg-muted' : 'opacity-30 cursor-not-allowed'}`}
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
       
-      {/* Day labels */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {DAY_LABELS.map((day, i) => (
-          <div key={i} className="text-center text-xs text-muted-foreground font-medium py-1">
-            {day}
+      {/* GitHub-style horizontal grid */}
+      <div className="flex gap-0.5">
+        {/* Day labels */}
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mr-1">
+          {DAYS_OF_WEEK.map((day, i) => (
+            <div key={day} className="h-3 flex items-center" style={{ visibility: i % 2 === 1 ? 'visible' : 'hidden' }}>
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar grid - weeks as columns */}
+        {weeks.map((week, weekIndex) => (
+          <div key={weekIndex} className="flex flex-col gap-0.5">
+            {week.map((day) => {
+              const activity = activityMap.get(day.dateStr);
+              const count = activity?.count || 0;
+              const isSelected = selectedDate === day.dateStr;
+              const activities = activity?.activities || [];
+              
+              const styleInfo: DayStyleInfo = {
+                isOOO: activities.some(a => a.type === 'ooo'),
+                hasProgress: activities.some(a => a.type === 'progress'),
+                hasProfile: activities.some(a => a.type === 'profile_update'),
+                hasTaskUpdate: activities.some(a => a.type === 'task_update'),
+                hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
+                hasTaskStarted: activities.some(a => a.type === 'task_started'),
+                hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
+                hasTaskRequest: activities.some(a => a.type === 'task_request'),
+                hasExtension: activities.some(a => a.type === 'extension_request'),
+              };
+              
+              // Determine cell content
+              let cellContent = null;
+              if (styleInfo.hasTaskCompleted) {
+                cellContent = <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />;
+              } else if (styleInfo.hasTaskStarted) {
+                cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
+              } else if (styleInfo.hasTaskAssigned) {
+                cellContent = <span className="text-[8px] font-bold text-white">A</span>;
+              } else if (styleInfo.hasTaskRequest) {
+                cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
+              }
+              
+              // Dim days outside current month
+              const opacity = day.inMonth ? '' : 'opacity-30';
+              
+              return (
+                <button
+                  key={day.dateStr}
+                  onClick={() => onDayClick(day.dateStr)}
+                  className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${opacity} ${buildDayStyle(count, isSelected, styleInfo)}`}
+                  title={`${formatShortDate(day.dateStr)}: ${count} activities`}
+                >
+                  {cellContent}
+                </button>
+              );
+            })}
           </div>
         ))}
       </div>
       
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {days.map((dateStr, i) => {
-          if (!dateStr) {
-            return <div key={`empty-${i}`} className="aspect-square" />;
-          }
-          
-          const activity = activityMap.get(dateStr);
-          const count = activity?.count || 0;
-          const isSelected = selectedDate === dateStr;
-          const dayNum = new Date(dateStr).getDate();
-          const activities = activity?.activities || [];
-          
-          const styleInfo: DayStyleInfo = {
-            isOOO: activities.some(a => a.type === 'ooo'),
-            hasProgress: activities.some(a => a.type === 'progress'),
-            hasProfile: activities.some(a => a.type === 'profile_update'),
-            hasTaskUpdate: activities.some(a => a.type === 'task_update'),
-            hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
-            hasTaskStarted: activities.some(a => a.type === 'task_started'),
-            hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
-            hasTaskRequest: activities.some(a => a.type === 'task_request'),
-            hasExtension: activities.some(a => a.type === 'extension_request'),
-          };
-          
-          // Get background color based on activity
-          let bgClass = 'bg-muted/50';
-          if (count > 0) {
-            if (styleInfo.isOOO) {
-              bgClass = 'bg-amber-400 dark:bg-amber-500';
-            } else if (styleInfo.hasTaskCompleted) {
-              bgClass = 'bg-emerald-500';
-            } else if (styleInfo.hasTaskAssigned) {
-              bgClass = 'bg-blue-600 dark:bg-blue-500';
-            } else if (styleInfo.hasTaskStarted || styleInfo.hasTaskRequest) {
-              bgClass = 'bg-emerald-200 dark:bg-emerald-800 ring-2 ring-inset ring-emerald-500';
-            } else if (styleInfo.hasProgress) {
-              bgClass = 'bg-emerald-100 dark:bg-emerald-900 ring-2 ring-inset ring-emerald-400';
-            } else if (styleInfo.hasExtension) {
-              bgClass = 'bg-red-100 dark:bg-red-900 ring-2 ring-inset ring-red-400';
-            } else {
-              bgClass = 'bg-emerald-200 dark:bg-emerald-800';
-            }
-          }
-          
-          return (
-            <button
-              key={dateStr}
-              onClick={() => onDayClick(dateStr)}
-              className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-all ${bgClass} ${
-                isSelected ? 'ring-2 ring-foreground ring-offset-2' : ''
-              } ${count > 0 ? 'hover:ring-2 hover:ring-foreground/50' : ''}`}
-            >
-              <span className={count > 0 && (styleInfo.hasTaskCompleted || styleInfo.hasTaskAssigned || styleInfo.isOOO) ? 'text-white' : ''}>
-                {dayNum}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      
       {/* Compact legend */}
-      <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-muted-foreground justify-center">
+      <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground justify-center">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-blue-600" />
+          <div className="w-3 h-3 rounded-sm bg-blue-600 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-white">A</span>
+          </div>
           <span>Assigned</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-emerald-500" />
+          <div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center">
+            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+          </div>
           <span>Done</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-amber-400" />
+          <div className="w-3 h-3 rounded-sm bg-amber-400" />
           <span>OOO</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-emerald-200 dark:bg-emerald-800 ring-1 ring-emerald-500" />
-          <span>Active</span>
         </div>
       </div>
     </div>
@@ -685,7 +701,7 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
       {/* Mobile: Monthly Calendar View */}
       {isMobile ? (
         <div className="space-y-4">
-          <MonthlyCalendar
+          <MobileCalendar
             activityMap={activityMap}
             onDayClick={handleDayClick}
             selectedDate={activeDay?.date || null}
