@@ -129,7 +129,11 @@ export default async function MembersPage({ searchParams }: PageProps) {
           const discordInfo = getDiscordBadge(user.roles?.in_discord);
           const archivedInfo = getArchivedBadge(user.roles?.archived);
           return (
-            <div key={user.id} className="flex items-center gap-3 p-3 rounded-lg border">
+            <Link 
+              key={user.id} 
+              href={`/member/${user.id}`}
+              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+            >
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user.picture?.url} alt={user.username} />
                 <AvatarFallback>
@@ -154,8 +158,12 @@ export default async function MembersPage({ searchParams }: PageProps) {
                   </Badge>
                 )}
               </div>
-              {isRoot && <UserInfoPopover userId={user.id} />}
-            </div>
+              {isRoot && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <UserInfoPopover userId={user.id} />
+                </div>
+              )}
+            </Link>
           );
         })}
       </div>
