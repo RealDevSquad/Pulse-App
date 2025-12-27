@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
 import { db } from '@/lib/firebase-admin';
@@ -448,6 +449,38 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
   return result;
 }
 
+/**
+ * Cached version of getUserActivityData - 5 min cache per user
+ */
+function getCachedUserActivityData(userId: string): Promise<ActivityDay[]> {
+  const cachedFn = unstable_cache(
+    async (): Promise<ActivityDay[]> => {
+      console.log(`[Cache] Fetching activity data for user ${userId}...`);
+      return getUserActivityData(userId);
+    },
+    [`user-activity-${userId}`],
+    { revalidate: 300, tags: [`user-activity-${userId}`] }
+  );
+  return cachedFn();
+}
+
+/**
+ * Cached user data fetch - 5 min cache per user
+ */
+function getCachedUser(userId: string): Promise<User | null> {
+  const cachedFn = unstable_cache(
+    async (): Promise<User | null> => {
+      console.log(`[Cache] Fetching user data for ${userId}...`);
+      const userDoc = await db.collection('users').doc(userId).get();
+      if (!userDoc.exists) return null;
+      return { id: userDoc.id, ...userDoc.data() } as User;
+    },
+    [`user-data-${userId}`],
+    { revalidate: 300, tags: [`user-data-${userId}`] }
+  );
+  return cachedFn();
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -521,10 +554,10 @@ export default async function MemberPage({ params }: PageProps) {
   // Root check for conditional UI (Member Info section)
   const isRoot = isRootUser(session.userId);
 
-  // Fetch user data
-  const userDoc = await db.collection('users').doc(id).get();
+  // Fetch user data from cache
+  const user = await getCachedUser(id);
   
-  if (!userDoc.exists) {
+  if (!user) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <h1 className="text-2xl font-bold">404 - Member Not Found</h1>
@@ -538,16 +571,14 @@ export default async function MemberPage({ params }: PageProps) {
       </div>
     );
   }
-
-  const user = { id: userDoc.id, ...userDoc.data() } as User;
   const roleBadges = getRoleBadges(user.roles);
   const statusBadge = getStatusBadge(user.status);
 
-  // Fetch user's tasks (cached for instant load) and activity data in parallel
+  // Fetch user's tasks and activity data from cache for instant load
   // Tasks will be refreshed client-side via MemberTasks component
   const [userTasks, activityData, logsActivity] = await Promise.all([
     getCachedUserTasks(id),
-    getUserActivityData(id),
+    getCachedUserActivityData(id),
     getUserActivityFromLogs(id),
   ]);
 
