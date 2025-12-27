@@ -24,15 +24,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { NavItemMotion, FadeIn } from '@/components/ui/motion';
 
 const navItems = [
-  { title: 'Home', url: '/dashboard', icon: Home },
-  { title: 'OOO', url: '/dashboard/ooo', icon: Calendar },
-  { title: 'Tasks', url: '/dashboard/tasks', icon: CheckSquare },
-  { title: 'Members', url: '/dashboard/members', icon: Users },
+  { title: 'Home', url: '/', icon: Home },
+  { title: 'OOO', url: '/ooo', icon: Calendar },
+  { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+  { title: 'Members', url: '/members', icon: Users },
 ];
 
-const adminItems = [{ title: 'Settings', url: '/dashboard/settings', icon: Settings }];
+const adminItems = [{ title: 'Settings', url: '/settings', icon: Settings }];
 
 const footerItems = [
   { title: 'Help', url: '/help', icon: HelpCircle },
@@ -45,9 +46,11 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-6 py-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-xl font-bold">⚡ Pulse</span>
-        </Link>
+        <FadeIn>
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold">⚡ Pulse</span>
+          </Link>
+        </FadeIn>
       </SidebarHeader>
 
       <SidebarContent>
@@ -55,14 +58,16 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {navItems.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <NavItemMotion index={index}>
+                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </NavItemMotion>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -73,14 +78,16 @@ export function AppSidebar() {
           <SidebarGroupLabel>Admin</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
+              {adminItems.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <NavItemMotion index={index + navItems.length}>
+                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </NavItemMotion>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -90,14 +97,16 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t">
         <SidebarMenu>
-          {footerItems.map((item) => (
+          {footerItems.map((item, index) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
-                <Link href={item.url}>
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
+              <NavItemMotion index={index + navItems.length + adminItems.length}>
+                <SidebarMenuButton asChild>
+                  <Link href={item.url}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </NavItemMotion>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>

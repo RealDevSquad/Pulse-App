@@ -1,11 +1,15 @@
+'use client';
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { motion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
+import { useMotionConfig } from "@/components/motion-provider"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
   {
     variants: {
       variant: {
@@ -54,4 +58,54 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
-export { Button, buttonVariants }
+/**
+ * MotionButton - Button with tap/hover micro-interactions
+ */
+export interface MotionButtonProps
+  extends VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+  className?: string
+  disabled?: boolean
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  type?: 'button' | 'submit' | 'reset'
+  children?: React.ReactNode
+}
+
+const MotionButton = React.forwardRef<HTMLButtonElement, MotionButtonProps>(
+  ({ className, variant, size, asChild = false, disabled, onClick, type = 'button', children }, ref) => {
+    const { springConfig, prefersReducedMotion } = useMotionConfig()
+    
+    if (prefersReducedMotion || asChild) {
+      const Comp = asChild ? Slot : "button"
+      return (
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          disabled={disabled}
+          onClick={onClick}
+          type={type}
+        >
+          {children}
+        </Comp>
+      )
+    }
+
+    return (
+      <motion.button
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={disabled}
+        onClick={onClick}
+        type={type}
+        whileHover={disabled ? undefined : { scale: 1.02 }}
+        whileTap={disabled ? undefined : { scale: 0.98 }}
+        transition={{ type: 'spring', ...springConfig }}
+      >
+        {children}
+      </motion.button>
+    )
+  }
+)
+MotionButton.displayName = "MotionButton"
+
+export { Button, MotionButton, buttonVariants }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify, importSPKI } from 'jose';
 
-async function verifyTokenMiddleware(token: string): Promise<boolean> {
+async function verifyToken(token: string): Promise<boolean> {
   const publicKeyPem = process.env.JWT_PUBLIC_KEY;
 
   if (!publicKeyPem) {
@@ -22,11 +22,11 @@ async function verifyTokenMiddleware(token: string): Promise<boolean> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/api/health'];
+  const publicRoutes = ['/login', '/api/health'];
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }
@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const isValid = await verifyTokenMiddleware(token);
+  const isValid = await verifyToken(token);
 
   if (!isValid) {
     if (!pathname.startsWith('/api/')) {
