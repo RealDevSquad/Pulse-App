@@ -28,16 +28,16 @@ interface DayActivityData {
 }
 
 async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
-  // Fetch 3 years of data to support year navigation
-  const threeYearsAgo = Date.now() - 3 * 365 * 24 * 60 * 60 * 1000;
-  const threeYearsAgoDate = new Date(threeYearsAgo);
+  // Fetch 2 years of data to support year navigation
+  const twoYearsAgo = Date.now() - 2 * 365 * 24 * 60 * 60 * 1000;
+  const twoYearsAgoDate = new Date(twoYearsAgo);
   
   // Fetch logs, progress updates, and OOO data in parallel
   const [logsSnapshot, taskAssignmentLogsSnapshot, progressSnapshot, oooEntries] = await Promise.all([
     // Logs for this user (task updates, profile updates, etc.)
     db.collection('logs')
       .where('meta.userId', '==', userId)
-      .where('timestamp', '>=', threeYearsAgoDate)
+      .where('timestamp', '>=', twoYearsAgoDate)
       .orderBy('timestamp', 'desc')
       .get(),
     // Task request approvals where this user was assigned the task
@@ -45,13 +45,13 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
     db.collection('logs')
       .where('type', '==', 'taskRequests')
       .where('body.approvedTo', '==', userId)
-      .where('timestamp', '>=', threeYearsAgoDate)
+      .where('timestamp', '>=', twoYearsAgoDate)
       .orderBy('timestamp', 'desc')
       .get(),
     // Progress updates by this user
     db.collection('progresses')
       .where('userId', '==', userId)
-      .where('createdAt', '>=', threeYearsAgo)
+      .where('createdAt', '>=', twoYearsAgo)
       .get(),
     // OOO entries from cache (aggregates both requests and usersStatus collections)
     getUserOOOEntries(userId),
@@ -122,7 +122,7 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
   for (const doc of logsSnapshot.docs) {
     const data = doc.data();
     const timestamp = data.timestamp?._seconds ? data.timestamp._seconds * 1000 : null;
-    if (!timestamp || timestamp < threeYearsAgo) continue;
+    if (!timestamp || timestamp < twoYearsAgo) continue;
     
     const dateKey = getDateKey(timestamp);
     const day = ensureDay(dateKey);
@@ -284,7 +284,7 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
     
     const data = doc.data();
     const timestamp = data.timestamp?._seconds ? data.timestamp._seconds * 1000 : null;
-    if (!timestamp || timestamp < threeYearsAgo) continue;
+    if (!timestamp || timestamp < twoYearsAgo) continue;
     
     const status = data.body?.status;
     if (status !== 'APPROVED') continue;
@@ -310,7 +310,7 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
   for (const doc of progressSnapshot.docs) {
     const data = doc.data();
     const timestamp = data.createdAt || data.date;
-    if (timestamp && timestamp >= threeYearsAgo) {
+    if (timestamp && timestamp >= twoYearsAgo) {
       const dateKey = getDateKey(timestamp);
       const day = ensureDay(dateKey);
       
@@ -340,7 +340,7 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
       
       if (from && until) {
         // Mark each day in the OOO range with reason
-        let current = Math.max(from, threeYearsAgo);
+        let current = Math.max(from, twoYearsAgo);
         const end = Math.min(until, Date.now());
         
         // Format date range for subtitle
