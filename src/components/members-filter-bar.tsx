@@ -28,7 +28,7 @@ export function MembersFilterBar({ filters }: { filters: FilterState }) {
   const router = useRouter();
 
   return (
-    <div className="flex flex-wrap items-center gap-6">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6">
       <div className="flex items-center gap-2">
         <Switch
           id="in-discord"
@@ -53,7 +53,7 @@ export function MembersFilterBar({ filters }: { filters: FilterState }) {
           Archived
         </Label>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Checkbox
           id="hide-superusers"
           checked={filters.hideSuperusers}
@@ -61,7 +61,7 @@ export function MembersFilterBar({ filters }: { filters: FilterState }) {
             router.push(buildUrl(filters, { hideSuperusers: checked === true }));
           }}
         />
-        <Label htmlFor="hide-superusers" className="text-sm font-medium cursor-pointer">
+        <Label htmlFor="hide-superusers" className="text-sm font-medium cursor-pointer whitespace-nowrap">
           Hide Superusers
         </Label>
       </div>
