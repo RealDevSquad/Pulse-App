@@ -1,8 +1,8 @@
-import { unstable_cache, revalidateTag } from 'next/cache';
+import { unstable_cache } from 'next/cache';
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
 import { db } from '@/lib/firebase-admin';
-import { getCachedUserTasks } from '@/lib/tasks-cache';
+import { getFreshUserTasks } from '@/lib/tasks-cache';
 import { getUserActivityFromLogs } from '@/lib/logs-cache';
 import { getUserOOOEntries } from '@/lib/ooo-cache';
 import { ArrowLeft, Github, Twitter, Linkedin, Globe, Mail, Phone, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
@@ -573,12 +573,9 @@ export default async function MemberPage({ params }: PageProps) {
   const roleBadges = getRoleBadges(user.roles);
   const statusBadge = getStatusBadge(user.status);
 
-  // Invalidate user's task cache to get fresh data on each visit
-  revalidateTag(`user-tasks-${id}`, { expire: 0 });
-
-  // Fetch user's tasks (fresh after invalidation) and activity data from cache
+  // Fetch user's tasks (fresh) and activity data from cache
   const [userTasks, activityData, logsActivity] = await Promise.all([
-    getCachedUserTasks(id),
+    getFreshUserTasks(id),
     getCachedUserActivityData(id),
     getUserActivityFromLogs(id),
   ]);
