@@ -23,6 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { NavItemMotion, FadeIn } from '@/components/ui/motion';
 
@@ -47,6 +48,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ userId, username }: AppSidebarProps) {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
   
   // Check if a nav item should be marked as active
   const isActive = (url: string): boolean => {
@@ -55,6 +57,11 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
       return pathname === '/me' || (!!userId && pathname === `/member/${userId}`);
     }
     return pathname === url || pathname.startsWith(`${url}/`);
+  };
+
+  // Close sidebar on mobile when navigating
+  const handleNavClick = () => {
+    setOpenMobile(false);
   };
 
   return (
@@ -76,7 +83,7 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
                 <SidebarMenuItem key={item.title}>
                   <NavItemMotion index={index}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleNavClick}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -96,7 +103,7 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
                 <SidebarMenuItem key={item.title}>
                   <NavItemMotion index={index + navItems.length}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleNavClick}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -114,6 +121,7 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
           <div className="px-3 py-2">
             <Link 
               href="/me" 
+              onClick={handleNavClick}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
             >
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
@@ -128,7 +136,7 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
             <SidebarMenuItem key={item.title}>
               <NavItemMotion index={index + navItems.length + adminItems.length}>
                 <SidebarMenuButton asChild>
-                  <Link href={item.url}>
+                  <Link href={item.url} onClick={handleNavClick}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </Link>
