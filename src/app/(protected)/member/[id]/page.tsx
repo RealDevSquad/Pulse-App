@@ -498,7 +498,9 @@ function getRoleBadges(roles: User['roles']) {
 }
 
 function getStatusBadge(status?: string) {
-  switch (status?.toLowerCase()) {
+  if (!status) return null;
+  
+  switch (status.toLowerCase()) {
     case 'active':
       return { label: 'Active', className: 'border-green-500 text-green-600 bg-transparent' };
     case 'ooo':
@@ -506,7 +508,7 @@ function getStatusBadge(status?: string) {
     case 'idle':
       return { label: 'Idle', className: 'border-gray-500 text-gray-600 bg-transparent' };
     default:
-      return { label: status || 'Unknown', className: 'border-gray-500 text-gray-600 bg-transparent' };
+      return { label: status, className: 'border-gray-500 text-gray-600 bg-transparent' };
   }
 }
 
@@ -581,9 +583,11 @@ export default async function MemberPage({ params }: PageProps) {
             )}
           </div>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            <Badge variant="outline" className={statusBadge.className}>
-              {statusBadge.label}
-            </Badge>
+            {statusBadge && (
+              <Badge variant="outline" className={statusBadge.className}>
+                {statusBadge.label}
+              </Badge>
+            )}
             {roleBadges.map((badge, i) => (
               <Badge key={i} variant="outline" className={badge.className}>
                 {badge.label}

@@ -68,6 +68,7 @@ interface FilterState {
 interface TasksTableProps {
   tasks: TaskWithAssignee[];
   filters: FilterState;
+  isRoot?: boolean;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -140,7 +141,7 @@ function ProgressBar({ percent }: { percent: number }) {
 
 
 
-function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
+function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWithAssignee>[] {
   return [
     {
       id: 'title',
@@ -324,11 +325,12 @@ function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
         );
       },
     },
-    {
+    // Only show actions column for root users
+    ...(isRoot ? [{
       id: 'actions',
       header: '',
       size: 50,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: TaskWithAssignee } }) => {
         const user = row.original.assigneeUser;
         const assigneeName = user 
           ? `${user.first_name} ${user.last_name}`.trim() 
@@ -347,12 +349,12 @@ function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
           />
         );
       },
-    },
+    }] : []),
   ];
 }
 
-export function TasksTable({ tasks, filters }: TasksTableProps) {
-  const columns = createColumns(filters);
+export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) {
+  const columns = createColumns(filters, isRoot);
 
   const table = useReactTable({
     data: tasks,
