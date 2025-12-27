@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
 import { db } from '@/lib/firebase-admin';
-import { getFreshUserTasks } from '@/lib/tasks-cache';
+import { getCachedUserTasks } from '@/lib/tasks-cache';
 import { getUserActivityFromLogs } from '@/lib/logs-cache';
 import { getUserOOOEntries } from '@/lib/ooo-cache';
 import { ArrowLeft, Github, Twitter, Linkedin, Globe, Mail, Phone, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ActivityCalendar, type ActivityDay, type ActivityEntry, type ActivityItem } from '@/components/activity-calendar';
+import { MemberTasks } from '@/components/member-tasks';
 import Link from 'next/link';
 import type { User } from '@/types';
 
@@ -542,9 +543,10 @@ export default async function MemberPage({ params }: PageProps) {
   const roleBadges = getRoleBadges(user.roles);
   const statusBadge = getStatusBadge(user.status);
 
-  // Fetch user's tasks (fresh, not cached) and activity data in parallel
+  // Fetch user's tasks (cached for instant load) and activity data in parallel
+  // Tasks will be refreshed client-side via MemberTasks component
   const [userTasks, activityData, logsActivity] = await Promise.all([
-    getFreshUserTasks(id),
+    getCachedUserTasks(id),
     getUserActivityData(id),
     getUserActivityFromLogs(id),
   ]);
@@ -662,38 +664,8 @@ export default async function MemberPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* Active Tasks */}
-      {userTasks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Tasks ({userTasks.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {userTasks.map((task) => (
-                <div key={task.id} className="flex items-start justify-between gap-4 p-3 rounded-lg border">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium line-clamp-1">{task.title}</div>
-                    {task.github?.issue?.html_url && (
-                      <a
-                        href={task.github.issue.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        View on GitHub
-                      </a>
-                    )}
-                  </div>
-                  <Badge variant="outline" className="shrink-0">
-                    {task.status?.replace('_', ' ')}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Active Tasks - Client component for SWR pattern */}
+      <MemberTasks userId={id} initialTasks={userTasks} />
 
       {/* Member Info (Collapsible) - Root only */}
       {isRoot && (

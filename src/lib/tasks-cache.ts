@@ -293,6 +293,24 @@ export async function getFreshUserTasks(
 }
 
 /**
+ * Get cached user tasks - returns immediately from cache
+ * Used for initial page load, then client fetches fresh data
+ * 
+ * Note: We create a new cached function per userId to enable per-user cache tags
+ */
+export function getCachedUserTasks(userId: string): Promise<TaskWithAssignee[]> {
+  const cachedFn = unstable_cache(
+    async (): Promise<TaskWithAssignee[]> => {
+      console.log(`[Cache] Fetching tasks for user ${userId}...`);
+      return getFreshUserTasks(userId, 'active');
+    },
+    [`user-tasks-${userId}`],
+    { revalidate: 300, tags: [`user-tasks-${userId}`] } // 5 min cache, per-user tag
+  );
+  return cachedFn();
+}
+
+/**
  * Get task statistics
  */
 export async function getTaskStats(): Promise<{
