@@ -165,12 +165,14 @@ function createColumns(filters: FilterState): ColumnDef<OOOEntry>[] {
       size: 50,
       enableResizing: false,
       cell: ({ row }) => (
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={row.original.user?.picture?.url} alt={row.original.user?.username} />
-          <AvatarFallback className="text-xs">
-            {getInitials(row.original.user?.first_name, row.original.user?.last_name, row.original.user?.username)}
-          </AvatarFallback>
-        </Avatar>
+        <Link href={`/member/${row.original.userId}`}>
+          <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 transition-all">
+            <AvatarImage src={row.original.user?.picture?.url} alt={row.original.user?.username} />
+            <AvatarFallback className="text-xs">
+              {getInitials(row.original.user?.first_name, row.original.user?.last_name, row.original.user?.username)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
       ),
     },
     {
@@ -179,9 +181,12 @@ function createColumns(filters: FilterState): ColumnDef<OOOEntry>[] {
       header: 'Name',
       size: 180,
       cell: ({ row }) => (
-        <span className="font-medium">
+        <Link 
+          href={`/member/${row.original.userId}`}
+          className="font-medium hover:text-primary hover:underline transition-colors"
+        >
           {row.original.user?.first_name} {row.original.user?.last_name}
-        </span>
+        </Link>
       ),
     },
     {

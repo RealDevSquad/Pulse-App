@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
+import { getActiveUsersMap } from './users-cache';
 
 // Log types from Firestore
 export interface LogEntry {
@@ -89,6 +90,7 @@ export interface UserActivityFromLogs {
   taskRequests: number;
   tasksCompleted: number;
   tasksStarted: number;
+  tasksAssigned: number;
   dailyActivity: { date: string; count: number; types: string[] }[];
 }
 
@@ -132,7 +134,10 @@ const fetchRecentLogs = unstable_cache(
  * Get org health metrics from cached logs
  */
 export async function getOrgHealthMetrics(): Promise<OrgHealthMetrics> {
-  const logs = await fetchRecentLogs();
+  const [logs, activeUsersMap] = await Promise.all([
+    fetchRecentLogs(),
+    getActiveUsersMap(),
+  ]);
   
   // Initialize counters
   const uniqueUsers = new Set<string>();
@@ -240,9 +245,13 @@ export async function getOrgHealthMetrics(): Promise<OrgHealthMetrics> {
         break;
         
       case 'extensionRequests':
-        extensionRequests++;
-        if (member) member.extensionRequests++;
-        if (day) day.extensionRequests++;
+        // Only count as member's extension request if status is PENDING (they created it)
+        // APPROVED/DENIED means a superuser processed someone else's request
+        if (log.body?.status === 'PENDING') {
+          extensionRequests++;
+          if (member) member.extensionRequests++;
+          if (day) day.extensionRequests++;
+        }
         break;
         
       case 'REQUEST_APPROVED':
@@ -276,14 +285,16 @@ export async function getOrgHealthMetrics(): Promise<OrgHealthMetrics> {
     .sort((a, b) => b.count - a.count);
 
   // Get top contributors (by task updates + progress updates)
+  // Filter out archived users
   const topContributors = Array.from(memberActivityMap.values())
-    .filter(m => m.taskUpdates > 0 || m.progressUpdates > 0)
+    .filter(m => (m.taskUpdates > 0 || m.progressUpdates > 0) && activeUsersMap.has(m.userId))
     .sort((a, b) => (b.taskUpdates + b.progressUpdates) - (a.taskUpdates + a.progressUpdates))
     .slice(0, 10);
 
   // Get at-risk members (high extension requests relative to activity)
+  // Filter out archived users
   const atRiskMembers = Array.from(memberActivityMap.values())
-    .filter(m => m.extensionRequests >= 2)
+    .filter(m => m.extensionRequests >= 2 && activeUsersMap.has(m.userId))
     .sort((a, b) => b.extensionRequests - a.extensionRequests)
     .slice(0, 10);
 
@@ -310,10 +321,15 @@ export async function getOrgHealthMetrics(): Promise<OrgHealthMetrics> {
 
 /**
  * Get activity data for a specific user from cached logs
+ * 
+ * Task assignment detection:
+ * 1. Superuser direct assignment: type='task' with body.new.assignee set to userId
+ * 2. Task request approval: type='taskRequests' with status='APPROVED' and approvedTo=userId
  */
 export async function getUserActivityFromLogs(userId: string): Promise<UserActivityFromLogs> {
   const logs = await fetchRecentLogs();
   
+  // Filter logs where user is the actor (meta.userId)
   const userLogs = logs.filter(log => log.meta.userId === userId);
   
   let taskUpdates = 0;
@@ -321,8 +337,11 @@ export async function getUserActivityFromLogs(userId: string): Promise<UserActiv
   let extensionRequests = 0;
   let profileUpdates = 0;
   let taskRequests = 0;
-  let tasksCompleted = 0;
-  let tasksStarted = 0;
+  let tasksAssigned = 0;
+  
+  // Track unique tasks for started/completed counts
+  const tasksStartedSet = new Set<string>();
+  const tasksCompletedSet = new Set<string>();
   
   const dailyMap = new Map<string, { count: number; types: Set<string> }>();
   
@@ -346,22 +365,36 @@ export async function getUserActivityFromLogs(userId: string): Promise<UserActiv
         if (log.body?.new?.percentCompleted !== undefined) {
           progressUpdates++;
         }
-        if (log.body?.new?.status === 'IN_PROGRESS') {
-          tasksStarted++;
-        } else if (log.body?.new?.status === 'COMPLETED' || log.body?.new?.status === 'DONE') {
-          tasksCompleted++;
+        if (log.body?.new?.status === 'IN_PROGRESS' && log.meta.taskId) {
+          tasksStartedSet.add(log.meta.taskId);
+        } else if ((log.body?.new?.status === 'COMPLETED' || log.body?.new?.status === 'DONE' || log.body?.new?.status === 'VERIFIED') && log.meta.taskId) {
+          tasksCompletedSet.add(log.meta.taskId);
         }
         break;
       case 'taskRequests':
         taskRequests++;
         break;
       case 'extensionRequests':
-        extensionRequests++;
+        // Only count if status is PENDING (user created the request)
+        // APPROVED/DENIED means user processed someone else's request
+        if (log.body?.status === 'PENDING') {
+          extensionRequests++;
+        }
         break;
       case 'USER_DETAILS_UPDATED':
       case 'PROFILE_VERIFIED':
         profileUpdates++;
         break;
+    }
+  }
+
+  // Count tasks assigned TO this user via task request approvals
+  // Note: Superuser direct assignments are not logged with body.new.assignee
+  for (const log of logs) {
+    if (log.type === 'taskRequests' && 
+        (log.body?.status === 'APPROVED' || log.meta.subAction === 'approve') && 
+        log.body?.approvedTo === userId) {
+      tasksAssigned++;
     }
   }
 
@@ -375,8 +408,9 @@ export async function getUserActivityFromLogs(userId: string): Promise<UserActiv
     extensionRequests,
     profileUpdates,
     taskRequests,
-    tasksCompleted,
-    tasksStarted,
+    tasksCompleted: tasksCompletedSet.size,
+    tasksStarted: tasksStartedSet.size,
+    tasksAssigned,
     dailyActivity,
   };
 }

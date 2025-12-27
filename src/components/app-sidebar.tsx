@@ -2,12 +2,12 @@
 
 import {
   Calendar,
-  Home,
   Users,
   CheckSquare,
-  Settings,
   HelpCircle,
-  LogOut,
+  User,
+  Building2,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -27,7 +27,8 @@ import {
 import { NavItemMotion, FadeIn } from '@/components/ui/motion';
 
 const navItems = [
-  { title: 'Home', url: '/', icon: Home },
+  { title: 'Me', url: '/me', icon: User },
+  { title: 'RDS', url: '/rds', icon: Building2 },
   { title: 'OOO', url: '/ooo', icon: Calendar },
   { title: 'Tasks', url: '/tasks', icon: CheckSquare },
   { title: 'Members', url: '/members', icon: Users },
@@ -37,11 +38,24 @@ const adminItems = [{ title: 'Settings', url: '/settings', icon: Settings }];
 
 const footerItems = [
   { title: 'Help', url: '/help', icon: HelpCircle },
-  { title: 'Log out', url: '/logout', icon: LogOut },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  userId?: string;
+  username?: string;
+}
+
+export function AppSidebar({ userId, username }: AppSidebarProps) {
   const pathname = usePathname();
+  
+  // Check if a nav item should be marked as active
+  const isActive = (url: string): boolean => {
+    if (url === '/me') {
+      // "Me" is active on /me or /member/{currentUserId}
+      return pathname === '/me' || (!!userId && pathname === `/member/${userId}`);
+    }
+    return pathname === url || pathname.startsWith(`${url}/`);
+  };
 
   return (
     <Sidebar>
@@ -61,7 +75,7 @@ export function AppSidebar() {
               {navItems.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
                   <NavItemMotion index={index}>
-                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -81,7 +95,7 @@ export function AppSidebar() {
               {adminItems.map((item, index) => (
                 <SidebarMenuItem key={item.title}>
                   <NavItemMotion index={index + navItems.length}>
-                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
@@ -96,6 +110,19 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t">
+        {username && (
+          <div className="px-3 py-2">
+            <Link 
+              href="/me" 
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
+            >
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                {username.slice(0, 2).toUpperCase()}
+              </div>
+              <span className="truncate text-muted-foreground">@{username}</span>
+            </Link>
+          </div>
+        )}
         <SidebarMenu>
           {footerItems.map((item, index) => (
             <SidebarMenuItem key={item.title}>

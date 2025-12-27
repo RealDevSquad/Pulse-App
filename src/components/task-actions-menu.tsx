@@ -32,6 +32,7 @@ import { TASK_TYPES, getTaskTypeInfo } from '@/lib/utils';
 interface TaskActionsMenuProps {
   taskId: string;
   taskTitle: string;
+  taskStatus?: string;
   taskType?: string;
   taskPriority?: string;
   taskEndsOn?: number;
@@ -45,6 +46,20 @@ const PRIORITY_OPTIONS = [
   { value: 'MEDIUM', label: 'Medium' },
   { value: 'LOW', label: 'Low' },
   { value: 'TBD', label: 'TBD' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'BACKLOG', label: 'Backlog' },
+  { value: 'TODO', label: 'Todo' },
+  { value: 'ASSIGNED', label: 'Assigned' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'BLOCKED', label: 'Blocked' },
+  { value: 'NEEDS_REVIEW', label: 'Needs Review' },
+  { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'VERIFIED', label: 'Verified' },
+  { value: 'MERGED', label: 'Merged' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'DONE', label: 'Done' },
 ];
 
 const TYPE_OPTIONS = TASK_TYPES.map(type => {
@@ -78,6 +93,7 @@ function getInitials(name?: string): string {
 export function TaskActionsMenu({ 
   taskId, 
   taskTitle,
+  taskStatus,
   taskType,
   taskPriority,
   taskEndsOn,
@@ -91,6 +107,7 @@ export function TaskActionsMenu({
   
   // Form state
   const [title, setTitle] = useState(taskTitle);
+  const [status, setStatus] = useState(taskStatus?.toUpperCase() || '');
   const [type, setType] = useState(taskType || '');
   const [priority, setPriority] = useState(taskPriority || '');
   const [dueDate, setDueDate] = useState(formatDateForInput(taskEndsOn));
@@ -99,6 +116,7 @@ export function TaskActionsMenu({
   // Track original values to detect changes
   const [originalValues, setOriginalValues] = useState({
     title: taskTitle,
+    status: taskStatus?.toUpperCase() || '',
     type: taskType || '',
     priority: taskPriority || '',
     dueDate: formatDateForInput(taskEndsOn),
@@ -109,22 +127,25 @@ export function TaskActionsMenu({
   useEffect(() => {
     if (isEditModalOpen) {
       setTitle(taskTitle);
+      setStatus(taskStatus?.toUpperCase() || '');
       setType(taskType || '');
       setPriority(taskPriority || '');
       setDueDate(formatDateForInput(taskEndsOn));
       setIsAssigned(hasAssignee);
       setOriginalValues({
         title: taskTitle,
+        status: taskStatus?.toUpperCase() || '',
         type: taskType || '',
         priority: taskPriority || '',
         dueDate: formatDateForInput(taskEndsOn),
         isAssigned: hasAssignee,
       });
     }
-  }, [isEditModalOpen, taskTitle, taskType, taskPriority, taskEndsOn, hasAssignee]);
+  }, [isEditModalOpen, taskTitle, taskStatus, taskType, taskPriority, taskEndsOn, hasAssignee]);
 
   const hasChanges = 
     title !== originalValues.title ||
+    status !== originalValues.status ||
     type !== originalValues.type ||
     priority !== originalValues.priority ||
     dueDate !== originalValues.dueDate ||
@@ -150,6 +171,9 @@ export function TaskActionsMenu({
       
       if (title !== originalValues.title) {
         updates.title = title;
+      }
+      if (status !== originalValues.status) {
+        updates.status = status || null;
       }
       if (type !== originalValues.type) {
         updates.type = type || null;
@@ -226,6 +250,26 @@ export function TaskActionsMenu({
                 placeholder="Task title"
                 className={title !== originalValues.title ? 'border-yellow-500 bg-yellow-50' : ''}
               />
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger 
+                  id="status"
+                  className={status !== originalValues.status ? 'border-yellow-500 bg-yellow-50' : ''}
+                >
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Type */}

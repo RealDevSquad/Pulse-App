@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { isUserAllowed } from '@/lib/users';
+import { isRootUser } from '@/lib/users';
 import { db } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 
@@ -11,9 +11,9 @@ export async function PATCH(
   const { id } = await params;
 
   try {
-    // Check authentication
+    // Check authentication - only root users can write
     const session = await getSession();
-    if (!session?.userId || !isUserAllowed(session.userId)) {
+    if (!session?.userId || !isRootUser(session.userId)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

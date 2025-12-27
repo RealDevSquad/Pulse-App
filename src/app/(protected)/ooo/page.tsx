@@ -1,7 +1,5 @@
-import { getSession } from '@/lib/auth';
-import { isUserAllowed } from '@/lib/users';
 import { getCachedOOORequests, getCachedFutureStatuses, type OOOSortField, type SortOrder } from '@/lib/ooo-cache';
-import { ShieldX, ChevronLeft, ChevronRight, Database, FileText, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Database, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OOOFilterBar } from '@/components/ooo-filter-bar';
 import { OOOTable } from '@/components/ooo-table';
@@ -42,18 +40,8 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
 }
 
 export default async function OOOPage({ searchParams }: PageProps) {
-  const session = await getSession();
+  // Access is already checked in layout
   const params = await searchParams;
-
-  if (!session?.userId || !isUserAllowed(session.userId)) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <ShieldX className="h-16 w-16 text-muted-foreground" />
-        <h1 className="text-2xl font-bold">403 - Access Denied</h1>
-        <p className="text-muted-foreground">You don&apos;t have permission to access this page.</p>
-      </div>
-    );
-  }
 
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const sortBy = (sortableColumns.find((c) => c.key === params.sortBy)?.key || 'from') as OOOSortField;
@@ -113,9 +101,12 @@ export default async function OOOPage({ searchParams }: PageProps) {
         {requests.map((request) => (
           <div key={request.id} className="p-4 rounded-lg border space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-medium">
+              <Link 
+                href={`/member/${request.userId}`}
+                className="font-medium hover:text-primary hover:underline transition-colors"
+              >
                 {request.user?.first_name} {request.user?.last_name}
-              </span>
+              </Link>
               <span
                 className={`text-xs px-2 py-1 rounded ${
                   request.status === 'APPROVED'

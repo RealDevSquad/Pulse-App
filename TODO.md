@@ -41,6 +41,6 @@ When setting up JWT authentication with RS256 keys, be aware of these issues:
 
 - [x] Test JWT verification with properly formatted env vars
 - [x] Remove debug logging from middleware after auth is working
-- [ ] Implement login redirect to RDS auth
-- [ ] Fetch user details from RDS API after token verification
-- [ ] Add user role/permissions to session
+- [x] Implement login redirect to RDS auth
+- [x] Fetch user details from RDS API after token verification
+- [x] Add user role/permissions to session

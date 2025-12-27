@@ -209,6 +209,90 @@ export async function getCachedTasks(options: GetCachedTasksOptions = {}): Promi
 }
 
 /**
+ * Get active task count - optimized query that only fetches active tasks
+ * Used for dashboard stats without loading all 1000+ tasks
+ */
+const fetchActiveTaskCount = unstable_cache(
+  async (): Promise<number> => {
+    console.log('[Cache] Fetching active task count...');
+    
+    // Query only active status tasks
+    let count = 0;
+    for (const status of ACTIVE_STATUSES) {
+      const snapshot = await db
+        .collection('tasks')
+        .where('status', '==', status)
+        .count()
+        .get();
+      count += snapshot.data().count;
+    }
+    
+    console.log(`[Cache] Active task count: ${count}`);
+    return count;
+  },
+  ['active-task-count'],
+  { revalidate: 300 } // 5 minutes
+);
+
+export async function getActiveTaskCount(): Promise<number> {
+  return fetchActiveTaskCount();
+}
+
+/**
+ * Fetch fresh tasks for a specific user, bypassing cache.
+ * Used on member detail page to show latest data.
+ * @param userId - The user ID to fetch tasks for
+ * @param statusFilter - Optional filter: 'active' for in-progress tasks, 'all' for everything
+ */
+export async function getFreshUserTasks(
+  userId: string, 
+  statusFilter: 'active' | 'all' = 'active'
+): Promise<TaskWithAssignee[]> {
+  console.log(`[Tasks] Fetching fresh ${statusFilter} tasks for user ${userId}...`);
+  
+  // Fetch tasks assigned to this user
+  const tasksSnapshot = await db
+    .collection('tasks')
+    .where('assignee', '==', userId)
+    .orderBy('updatedAt', 'desc')
+    .limit(100)
+    .get();
+
+  let tasks: Task[] = tasksSnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  } as Task));
+
+  // Filter by status if needed
+  if (statusFilter === 'active') {
+    tasks = tasks.filter((t) => ACTIVE_STATUSES.includes(t.status?.toUpperCase()));
+  }
+
+  // Fetch user data for the assignee
+  const userDoc = await db.collection('users').doc(userId).get();
+  let assigneeUser: TaskWithAssignee['assigneeUser'] = null;
+  
+  if (userDoc.exists) {
+    const data = userDoc.data() as User;
+    assigneeUser = {
+      id: userDoc.id,
+      username: data.username,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      picture: data.picture,
+    };
+  }
+
+  const tasksWithAssignee: TaskWithAssignee[] = tasks.map((task) => ({
+    ...task,
+    assigneeUser,
+  }));
+
+  console.log(`[Tasks] Fetched ${tasksWithAssignee.length} fresh ${statusFilter} tasks for user ${userId}`);
+  return tasksWithAssignee;
+}
+
+/**
  * Get task statistics
  */
 export async function getTaskStats(): Promise<{

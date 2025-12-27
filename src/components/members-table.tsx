@@ -28,6 +28,7 @@ interface FilterState {
 interface MembersTableProps {
   users: UserWithActivity[];
   filters: FilterState;
+  isRoot?: boolean;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -129,8 +130,8 @@ function SortableHeader({
   );
 }
 
-function createColumns(filters: FilterState): ColumnDef<UserWithActivity>[] {
-  return [
+function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<UserWithActivity>[] {
+  const columns: ColumnDef<UserWithActivity>[] = [
     {
       id: 'avatar',
       header: '',
@@ -147,13 +148,20 @@ function createColumns(filters: FilterState): ColumnDef<UserWithActivity>[] {
         </Link>
       ),
     },
-    {
+  ];
+
+  // Only show info popover for root users
+  if (isRoot) {
+    columns.push({
       id: 'actions',
       header: '',
       size: 50,
       enableResizing: false,
       cell: ({ row }) => <UserInfoPopover userId={row.original.id} />,
-    },
+    });
+  }
+
+  columns.push(
     {
       id: 'name',
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
@@ -332,11 +340,13 @@ function createColumns(filters: FilterState): ColumnDef<UserWithActivity>[] {
         );
       },
     },
-  ];
+  );
+
+  return columns;
 }
 
-export function MembersTable({ users, filters }: MembersTableProps) {
-  const columns = createColumns(filters);
+export function MembersTable({ users, filters, isRoot = false }: MembersTableProps) {
+  const columns = createColumns(filters, isRoot);
 
   const table = useReactTable({
     data: users,

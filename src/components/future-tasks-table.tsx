@@ -226,6 +226,7 @@ function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
           <TaskActionsMenu
             taskId={row.original.id}
             taskTitle={row.original.title}
+            taskStatus={row.original.status}
             taskType={row.original.type}
             taskPriority={row.original.priority}
             taskEndsOn={row.original.endsOn}

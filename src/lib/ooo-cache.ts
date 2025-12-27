@@ -303,3 +303,59 @@ export async function getUserOOOEntries(userId: string): Promise<OOOEntry[]> {
   const allEntries = await fetchAllOOOData();
   return allEntries.filter(entry => entry.userId === userId);
 }
+
+/**
+ * Get count of users currently OOO today
+ * Optimized query - only counts active OOO entries
+ */
+const fetchOOOTodayCount = unstable_cache(
+  async (): Promise<number> => {
+    console.log('[Cache] Fetching OOO today count...');
+    const now = Date.now();
+    
+    // Query requests collection for active/approved OOO covering today
+    const requestsSnapshot = await db
+      .collection('requests')
+      .where('type', '==', 'OOO')
+      .where('state', 'in', ['APPROVED'])
+      .get();
+    
+    let count = 0;
+    requestsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const from = data.from?._seconds ? data.from._seconds * 1000 : data.from;
+      const until = data.until?._seconds ? data.until._seconds * 1000 : data.until;
+      if (from <= now && until >= now) {
+        count++;
+      }
+    });
+    
+    // Also check usersStatus collection
+    const statusSnapshot = await db
+      .collection('usersStatus')
+      .where('currentStatus.state', '==', 'OOO')
+      .get();
+    
+    statusSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const from = data.currentStatus?.from?._seconds 
+        ? data.currentStatus.from._seconds * 1000 
+        : data.currentStatus?.from;
+      const until = data.currentStatus?.until?._seconds 
+        ? data.currentStatus.until._seconds * 1000 
+        : data.currentStatus?.until;
+      if (from && until && from <= now && until >= now) {
+        count++;
+      }
+    });
+    
+    console.log(`[Cache] OOO today count: ${count}`);
+    return count;
+  },
+  ['ooo-today-count'],
+  { revalidate: 300 } // 5 minutes
+);
+
+export async function getOOOTodayCount(): Promise<number> {
+  return fetchOOOTodayCount();
+}

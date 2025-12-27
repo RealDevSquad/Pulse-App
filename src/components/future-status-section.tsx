@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,17 +104,22 @@ export function FutureStatusSection({ entries }: FutureStatusSectionProps) {
                 <StaggerItem key={entry.id}>
                   <HoverLift lift={2} scale={1.01}>
                     <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage src={entry.user?.picture?.url} alt={entry.user?.username} />
-                        <AvatarFallback className="text-xs">
-                          {getInitials(entry.user?.first_name, entry.user?.last_name, entry.user?.username)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Link href={`/member/${entry.userId}`}>
+                        <Avatar className="h-10 w-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 transition-all">
+                          <AvatarImage src={entry.user?.picture?.url} alt={entry.user?.username} />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(entry.user?.first_name, entry.user?.last_name, entry.user?.username)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium truncate">
+                          <Link 
+                            href={`/member/${entry.userId}`}
+                            className="font-medium truncate hover:text-primary hover:underline transition-colors"
+                          >
                             {entry.user?.first_name} {entry.user?.last_name}
-                          </span>
+                          </Link>
                           <Badge variant="outline" className={stateBadge.className}>
                             {stateBadge.label}
                           </Badge>

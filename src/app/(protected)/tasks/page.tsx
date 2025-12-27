@@ -1,7 +1,5 @@
-import { getSession } from '@/lib/auth';
-import { isUserAllowed } from '@/lib/users';
 import { getCachedTasks, type TaskSortField, type SortOrder, type TaskStatusFilter } from '@/lib/tasks-cache';
-import { ShieldX, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { TasksFilterBar } from '@/components/tasks-filter-bar';
@@ -88,18 +86,8 @@ function getInitials(firstName?: string, lastName?: string, username?: string): 
 
 
 export default async function TasksPage({ searchParams }: PageProps) {
-  const session = await getSession();
+  // Access is already checked in layout
   const params = await searchParams;
-
-  if (!session?.userId || !isUserAllowed(session.userId)) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <ShieldX className="h-16 w-16 text-muted-foreground" />
-        <h1 className="text-2xl font-bold">403 - Access Denied</h1>
-        <p className="text-muted-foreground">You don&apos;t have permission to access this page.</p>
-      </div>
-    );
-  }
 
   const tab: TaskTab = params.tab === 'future' ? 'future' : params.tab === 'overdue' ? 'overdue' : 'current';
   const page = Math.max(1, parseInt(params.page || '1', 10));
@@ -197,17 +185,17 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
                 <div className="flex items-center justify-between gap-2">
                   {task.assigneeUser ? (
-                    <div className="flex items-center gap-2">
+                    <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
                       <Avatar className="h-6 w-6">
                         <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
                         <AvatarFallback className="text-xs">
                           {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm hover:underline">
                         {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                       </span>
-                    </div>
+                    </Link>
                   ) : (
                     <span className="text-sm text-muted-foreground">Unassigned</span>
                   )}
@@ -216,6 +204,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     <TaskActionsMenu
                       taskId={task.id}
                       taskTitle={task.title}
+                      taskStatus={task.status}
                       taskType={task.type}
                       taskPriority={task.priority}
                       taskEndsOn={task.endsOn}
@@ -573,6 +562,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   <TaskActionsMenu
                     taskId={task.id}
                     taskTitle={task.title}
+                    taskStatus={task.status}
                     taskType={task.type}
                     taskPriority={task.priority}
                     taskEndsOn={task.endsOn}

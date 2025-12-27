@@ -164,21 +164,25 @@ function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
       size: 180,
       cell: ({ row }) => {
         const user = row.original.assigneeUser;
+        const assigneeId = row.original.assignee;
         if (!user) {
           return <span className="text-muted-foreground">Unassigned</span>;
         }
         return (
-          <div className="flex items-center gap-2">
+          <Link
+            href={`/member/${assigneeId}`}
+            className="flex items-center gap-2 hover:text-primary transition-colors"
+          >
             <Avatar className="h-6 w-6">
               <AvatarImage src={user.picture?.url} alt={user.username} />
               <AvatarFallback className="text-xs">
                 {getInitials(user.first_name, user.last_name, user.username)}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm">
+            <span className="text-sm hover:underline">
               {user.first_name} {user.last_name}
             </span>
-          </div>
+          </Link>
         );
       },
     },
@@ -333,6 +337,7 @@ function createColumns(filters: FilterState): ColumnDef<TaskWithAssignee>[] {
           <TaskActionsMenu
             taskId={row.original.id}
             taskTitle={row.original.title}
+            taskStatus={row.original.status}
             taskType={row.original.type}
             taskPriority={row.original.priority}
             taskEndsOn={row.original.endsOn}

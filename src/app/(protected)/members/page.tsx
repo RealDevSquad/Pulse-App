@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth';
-import { isUserAllowed } from '@/lib/users';
+import { isRootUser } from '@/lib/users';
 import { getCachedUsers, type UserSortField, type SortOrder } from '@/lib/users-cache';
-import { ShieldX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,18 +78,10 @@ function getArchivedBadge(archived?: boolean) {
 }
 
 export default async function MembersPage({ searchParams }: PageProps) {
-  const session = await getSession();
+  // Access is already checked in layout - session is guaranteed
+  const session = (await getSession())!;
+  const isRoot = isRootUser(session.userId);
   const params = await searchParams;
-
-  if (!session?.userId || !isUserAllowed(session.userId)) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
-        <ShieldX className="h-16 w-16 text-muted-foreground" />
-        <h1 className="text-2xl font-bold">403 - Access Denied</h1>
-        <p className="text-muted-foreground">You don&apos;t have permission to access this page.</p>
-      </div>
-    );
-  }
 
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const sortBy = (sortableColumns.find(c => c.key === params.sortBy)?.key || 'created_at') as UserSortField;
@@ -128,7 +120,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
 
       {/* Desktop Table (Resizable) */}
       <div className="hidden md:block">
-        <MembersTable users={users} filters={filters} />
+        <MembersTable users={users} filters={filters} isRoot={isRoot} />
       </div>
 
       {/* Mobile Card View */}
@@ -162,7 +154,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
                   </Badge>
                 )}
               </div>
-              <UserInfoPopover userId={user.id} />
+              {isRoot && <UserInfoPopover userId={user.id} />}
             </div>
           );
         })}

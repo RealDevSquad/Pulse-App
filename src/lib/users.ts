@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
 import type { User } from '@/types';
 
@@ -20,23 +21,96 @@ export interface GetUsersResult {
   hasMore: boolean;
 }
 
-// Feature gate: only these userIds can access the dashboard
-const ALLOWED_USER_IDS = ['XAF7rSUvk4p0d098qWYS'];
+// Access control:
+// - Admin: Read-only dashboard access
+// - Root: Admin access + Write access (full access)
+const ROOT_USER_IDS = ['XAF7rSUvk4p0d098qWYS'];
+const ADMIN_USER_IDS: string[] = [];
 
 /**
- * Check if a userId is allowed to access the dashboard
+ * Check if a userId is an admin user (read-only dashboard access)
+ */
+export function isAdminUser(userId: string): boolean {
+  return ADMIN_USER_IDS.includes(userId);
+}
+
+/**
+ * Check if a userId is a root user (admin access + write access)
+ */
+export function isRootUser(userId: string): boolean {
+  return ROOT_USER_IDS.includes(userId);
+}
+
+/**
+ * Check if a userId is allowed to access the dashboard (admin or root)
  */
 export function isUserAllowed(userId: string): boolean {
-  return ALLOWED_USER_IDS.includes(userId);
+  return isAdminUser(userId) || isRootUser(userId);
+}
+
+/**
+ * Check if a user is an active RDS member (non-archived)
+ * Returns null if user not found, true if active, false if archived
+ * Cached for 5 minutes to avoid hitting Firestore on every navigation
+ */
+export async function isActiveRDSMember(userId: string): Promise<boolean | null> {
+  const cachedCheck = unstable_cache(
+    async (uid: string) => {
+      try {
+        const userDoc = await db.collection('users').doc(uid).get();
+        
+        if (!userDoc.exists) {
+          return null; // User not found
+        }
+        
+        const userData = userDoc.data();
+        return userData?.roles?.archived !== true;
+      } catch (error) {
+        console.error('Error checking RDS membership:', error);
+        return null;
+      }
+    },
+    [`rds-member-check-${userId}`],
+    { revalidate: 300 } // 5 minutes
+  );
+  
+  return cachedCheck(userId);
+}
+
+export type AccessCheckResult = 
+  | { allowed: true; isRoot: boolean }
+  | { allowed: false; reason: 'not_logged_in' | 'not_rds_member' | 'not_authorized' };
+
+/**
+ * Check if a user has access to the dashboard.
+ * Returns access status and whether the user is root.
+ * 
+ * Access hierarchy:
+ * 1. Must be logged in (have a session)
+ * 2. Must be an active RDS member (non-archived)
+ * 
+ * Any authenticated, non-archived RDS member can access protected pages.
+ * Root users get additional write permissions.
+ */
+export async function checkDashboardAccess(userId: string | undefined): Promise<AccessCheckResult> {
+  // Check 1: Must be logged in
+  if (!userId) {
+    return { allowed: false, reason: 'not_logged_in' };
+  }
+
+  // Check 2: Must be an active RDS member
+  const isActiveMember = await isActiveRDSMember(userId);
+  if (isActiveMember === null || isActiveMember === false) {
+    return { allowed: false, reason: 'not_rds_member' };
+  }
+
+  return { allowed: true, isRoot: isRootUser(userId) };
 }
 
 /**
  * Fetch user data from Firestore by userId
  */
 export async function getUserById(userId: string): Promise<User | null> {
-  if (!isUserAllowed(userId)) {
-    return null;
-  }
 
   try {
     const userDoc = await db.collection('users').doc(userId).get();

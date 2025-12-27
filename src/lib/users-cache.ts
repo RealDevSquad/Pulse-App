@@ -236,6 +236,42 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
   };
 }
 
+/**
+ * Get count of active members (users with at least one active task)
+ * Optimized to avoid fetching all user data
+ */
+const fetchActiveMembersCount = unstable_cache(
+  async (): Promise<number> => {
+    console.log('[Cache] Fetching active members count...');
+    
+    // Get all assigned tasks with active status
+    const activeStatuses = ['ASSIGNED', 'IN_PROGRESS'];
+    const assigneeSet = new Set<string>();
+    
+    for (const status of activeStatuses) {
+      const snapshot = await db
+        .collection('tasks')
+        .where('status', '==', status)
+        .select('assignee')
+        .get();
+      
+      snapshot.docs.forEach(doc => {
+        const assignee = doc.data().assignee;
+        if (assignee) assigneeSet.add(assignee);
+      });
+    }
+    
+    console.log(`[Cache] Active members count: ${assigneeSet.size}`);
+    return assigneeSet.size;
+  },
+  ['active-members-count'],
+  { revalidate: 300 } // 5 minutes
+);
+
+export async function getActiveMembersCount(): Promise<number> {
+  return fetchActiveMembersCount();
+}
+
 export interface ActiveUserInfo {
   id: string;
   username: string;

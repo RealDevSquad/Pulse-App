@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ListTodo, FileText, Plane, User, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ListTodo, FileText, Plane, User, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Clock, Check, ClipboardList } from 'lucide-react';
 
-export type ActivityType = 'task_update' | 'progress' | 'ooo' | 'task_request' | 'profile_update';
+export type ActivityType = 'task_update' | 'task_assigned' | 'task_started' | 'task_completed' | 'progress' | 'ooo' | 'task_request' | 'profile_update' | 'extension_request';
 
 export interface ActivityEntry {
   id: string;
@@ -24,7 +24,7 @@ export interface ActivityDay {
   activities: ActivityItem[];
 }
 
-export type ActivityFilter = ActivityType | 'all';
+export type ActivityFilter = ActivityType | 'all' | 'key_events';
 
 interface ActivityCalendarProps {
   data: ActivityDay[];
@@ -37,19 +37,87 @@ interface ActivityCalendarProps {
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function getIntensityClass(count: number, isSelected: boolean, isOOO: boolean): string {
-  const base = isSelected ? 'ring-2 ring-foreground ring-offset-2 ' : '';
+interface DayStyleInfo {
+  isOOO: boolean;
+  hasProgress: boolean;
+  hasProfile: boolean;
+  hasTaskUpdate: boolean;
+  hasTaskAssigned: boolean;
+  hasTaskStarted: boolean;
+  hasTaskCompleted: boolean;
+  hasTaskRequest: boolean;
+  hasExtension: boolean;
+}
+
+interface StyleComponents {
+  solid: string | null;       // bg-* class for solid fill
+  ring: string | null;        // ring-* classes for solid ring  
+  dashed: string | null;      // border-* classes for dashed border
+  scale: string | null;       // scale-* for size adjustment
+}
+
+function buildDayStyle(count: number, isSelected: boolean, styleInfo: DayStyleInfo): string {
+  const selectionRing = isSelected ? 'ring-2 ring-foreground ring-offset-2 ' : '';
   
-  // OOO days are yellow
+  if (count === 0) return selectionRing + 'bg-muted';
+  
+  const { isOOO, hasProgress, hasProfile, hasTaskUpdate, hasTaskAssigned, hasTaskStarted, hasTaskCompleted, hasTaskRequest, hasExtension } = styleInfo;
+  
+  const style: StyleComponents = {
+    solid: null,
+    ring: null,
+    dashed: null,
+    scale: null,
+  };
+  
+  // Determine solid background (priority order)
   if (isOOO) {
-    return base + 'bg-amber-400 dark:bg-amber-500';
+    style.solid = 'bg-amber-400 dark:bg-amber-500';
+  } else if (hasTaskCompleted) {
+    style.solid = 'bg-emerald-500 dark:bg-emerald-500';
+  } else if (hasTaskAssigned) {
+    style.solid = 'bg-blue-600 dark:bg-blue-500';
+  } else if (hasTaskUpdate && !hasProgress && !hasProfile && !hasExtension && !hasTaskStarted && !hasTaskRequest) {
+    // Task update only = small blue dot
+    style.solid = 'bg-blue-400 dark:bg-blue-500';
+    style.scale = 'scale-75';
   }
   
-  if (count === 0) return base + 'bg-muted';
-  if (count === 1) return base + 'bg-emerald-200 dark:bg-emerald-900';
-  if (count <= 3) return base + 'bg-emerald-300 dark:bg-emerald-700';
-  if (count <= 5) return base + 'bg-emerald-400 dark:bg-emerald-600';
-  return base + 'bg-emerald-500 dark:bg-emerald-500';
+  // Determine ring
+  // Extension (red) takes priority, then Started/Request (green), then Progress (green)
+  if (hasExtension && !isOOO) {
+    style.ring = 'ring-2 ring-inset ring-red-400 dark:ring-red-500';
+  } else if ((hasTaskStarted || hasTaskRequest) && !style.solid) {
+    style.ring = 'ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400';
+  } else if (hasProgress && !isOOO && !style.solid) {
+    style.ring = 'ring-2 ring-inset ring-emerald-400 dark:ring-emerald-500';
+  }
+  
+  // Determine dashed border (can combine with others)
+  if (hasProfile && !isOOO && !hasTaskCompleted && !hasTaskStarted && !hasTaskAssigned) {
+    style.dashed = 'border-2 border-dashed border-purple-400 dark:border-purple-500';
+  }
+  
+  // Build final class string
+  const classes: string[] = [selectionRing];
+  
+  if (style.solid) {
+    classes.push(style.solid);
+  } else if (style.ring || style.dashed) {
+    classes.push('bg-transparent');
+  } else {
+    // Fallback to intensity-based solid
+    if (count === 1) classes.push('bg-emerald-200 dark:bg-emerald-900');
+    else if (count <= 3) classes.push('bg-emerald-300 dark:bg-emerald-700');
+    else if (count <= 5) classes.push('bg-emerald-400 dark:bg-emerald-600');
+    else classes.push('bg-emerald-500 dark:bg-emerald-500');
+  }
+  
+  if (style.ring) classes.push(style.ring);
+  if (style.dashed) classes.push(style.dashed);
+  if (style.scale) classes.push(style.scale);
+  
+  return classes.filter(Boolean).join(' ');
 }
 
 function formatDate(dateStr: string): string {
@@ -75,6 +143,12 @@ function getActivityIcon(type: ActivityType) {
   switch (type) {
     case 'task_update':
       return <ListTodo className="h-4 w-4 text-blue-500" />;
+    case 'task_assigned':
+      return <span className="h-4 w-4 text-blue-600 font-bold text-sm flex items-center justify-center">A</span>;
+    case 'task_started':
+      return <span className="h-4 w-4 text-emerald-600 font-bold text-sm flex items-center justify-center">S</span>;
+    case 'task_completed':
+      return <Check className="h-4 w-4 text-emerald-600" />;
     case 'progress':
       return <FileText className="h-4 w-4 text-emerald-500" />;
     case 'ooo':
@@ -83,6 +157,8 @@ function getActivityIcon(type: ActivityType) {
       return <CalendarDays className="h-4 w-4 text-purple-500" />;
     case 'profile_update':
       return <User className="h-4 w-4 text-gray-500" />;
+    case 'extension_request':
+      return <Clock className="h-4 w-4 text-red-500" />;
   }
 }
 
@@ -90,6 +166,12 @@ function getActivityLabel(type: ActivityType, count: number): string {
   switch (type) {
     case 'task_update':
       return `${count} task update${count > 1 ? 's' : ''}`;
+    case 'task_assigned':
+      return `${count} task${count > 1 ? 's' : ''} assigned`;
+    case 'task_started':
+      return `${count} task${count > 1 ? 's' : ''} started`;
+    case 'task_completed':
+      return `${count} task${count > 1 ? 's' : ''} completed`;
     case 'progress':
       return `${count} progress update${count > 1 ? 's' : ''}`;
     case 'ooo':
@@ -98,6 +180,8 @@ function getActivityLabel(type: ActivityType, count: number): string {
       return `${count} task request${count > 1 ? 's' : ''}`;
     case 'profile_update':
       return `${count} profile update${count > 1 ? 's' : ''}`;
+    case 'extension_request':
+      return `${count} extension request${count > 1 ? 's' : ''}`;
   }
 }
 
@@ -105,6 +189,12 @@ function getActivityDescription(type: ActivityType): string {
   switch (type) {
     case 'task_update':
       return 'Status changes, progress percentage updates, or deadline modifications';
+    case 'task_assigned':
+      return 'Task was assigned to this member';
+    case 'task_started':
+      return 'Started working on a task (moved to IN_PROGRESS)';
+    case 'task_completed':
+      return 'Finished working on a task';
     case 'progress':
       return 'Daily standup progress reports submitted';
     case 'ooo':
@@ -113,6 +203,8 @@ function getActivityDescription(type: ActivityType): string {
       return 'Requested to work on new tasks';
     case 'profile_update':
       return 'Updated profile information';
+    case 'extension_request':
+      return 'Requested deadline extension for a task';
   }
 }
 
@@ -163,7 +255,7 @@ function ExpandableActivityRow({ activity }: { activity: ActivityItem }) {
       
       {isOpen && hasEntries && (
         <div className="border-t border-border/50 bg-background/50">
-          <div className="max-h-48 overflow-y-auto">
+          <div className="max-h-48 overflow-y-auto [scrollbar-gutter:stable]">
             {activity.entries!.map((entry) => (
               <div key={entry.id} className="px-3 py-2 border-b border-border/30 last:border-b-0">
                 <div className="flex items-start gap-2">
@@ -236,21 +328,37 @@ function ActivityDetail({ selected, isPinned }: { selected: SelectedDay | null; 
 }
 
 const FILTER_OPTIONS: { value: ActivityFilter; label: string; icon: typeof ListTodo }[] = [
+  { value: 'key_events', label: 'Key Events', icon: CalendarDays },
   { value: 'all', label: 'All', icon: CalendarDays },
   { value: 'task_update', label: 'Task Updates', icon: ListTodo },
   { value: 'task_request', label: 'Task Requests', icon: CalendarDays },
   { value: 'progress', label: 'Progress', icon: FileText },
+  { value: 'extension_request', label: 'Extensions', icon: Clock },
   { value: 'ooo', label: 'OOO', icon: Plane },
 ];
+
+// Key events filter shows: task assigned, task started, task completed, extensions, OOO
+const KEY_EVENT_TYPES: ActivityType[] = ['task_assigned', 'task_started', 'task_completed', 'extension_request', 'ooo'];
 
 export function ActivityCalendar({ data, className = '', filter: externalFilter, onFilterChange, showFilters = false }: ActivityCalendarProps) {
   const [hoveredDay, setHoveredDay] = useState<SelectedDay | null>(null);
   const [pinnedDay, setPinnedDay] = useState<SelectedDay | null>(null);
   const [yearOffset, setYearOffset] = useState(0); // 0 = current year, -1 = last year, etc.
-  const [internalFilter, setInternalFilter] = useState<ActivityFilter>('all');
+  const [internalFilter, setInternalFilter] = useState<ActivityFilter>('key_events');
+  const [hoveredFilter, setHoveredFilter] = useState<ActivityFilter | null>(null);
   
-  const filter = externalFilter ?? internalFilter;
-  const setFilter = onFilterChange ?? setInternalFilter;
+  const selectedFilter = externalFilter ?? internalFilter;
+  const baseSetFilter = onFilterChange ?? setInternalFilter;
+  
+  // Effective filter: hovered filter for preview, or selected filter
+  const filter = hoveredFilter ?? selectedFilter;
+  
+  // Wrap setFilter to clear selection when filter changes
+  const setFilter = (newFilter: ActivityFilter) => {
+    setPinnedDay(null);
+    setHoveredDay(null);
+    baseSetFilter(newFilter);
+  };
   
   const activeDay = pinnedDay || hoveredDay;
 
@@ -260,6 +368,17 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
     for (const day of data) {
       if (filter === 'all') {
         map.set(day.date, day);
+      } else if (filter === 'key_events') {
+        // Key events: task assigned/completed (task_update), extensions, OOO
+        const filteredActivities = day.activities.filter(a => KEY_EVENT_TYPES.includes(a.type));
+        if (filteredActivities.length > 0) {
+          const filteredCount = filteredActivities.reduce((sum, a) => sum + a.count, 0);
+          map.set(day.date, {
+            ...day,
+            count: filteredCount,
+            activities: filteredActivities,
+          });
+        }
       } else {
         // Filter activities to only show selected type
         const filteredActivities = day.activities.filter(a => a.type === filter);
@@ -374,18 +493,25 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
     <div className={`space-y-4 ${className}`}>
       {/* Filters */}
       {showFilters && (
-        <div className="flex flex-wrap gap-2">
+        <div 
+          className="flex flex-wrap gap-2"
+          onMouseLeave={() => setHoveredFilter(null)}
+        >
           {FILTER_OPTIONS.map((option) => {
             const Icon = option.icon;
-            const isActive = filter === option.value;
+            const isSelected = selectedFilter === option.value;
+            const isPreview = hoveredFilter === option.value;
             return (
               <button
                 key={option.value}
                 onClick={() => setFilter(option.value)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                  isActive
+                onMouseEnter={() => setHoveredFilter(option.value)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors cursor-pointer ${
+                  isSelected
                     ? 'bg-foreground text-background border-foreground'
-                    : 'bg-background text-muted-foreground border-border hover:border-foreground hover:text-foreground'
+                    : isPreview
+                    ? 'bg-muted text-foreground border-foreground'
+                    : 'bg-background text-muted-foreground border-border'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -400,6 +526,30 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
         {/* Calendar */}
         <div className="flex-1 overflow-x-auto">
           <div className="inline-block min-w-fit">
+            {/* Year navigation */}
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={() => setYearOffset(yearOffset - 1)}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Previous Year</span>
+              </button>
+              <span className="text-sm font-medium">{yearLabel}</span>
+              <button
+                onClick={() => setYearOffset(yearOffset + 1)}
+                disabled={!canGoNext}
+                className={`flex items-center gap-1 text-sm transition-colors px-2 py-1 rounded ${
+                  canGoNext 
+                    ? 'text-muted-foreground hover:text-foreground hover:bg-muted' 
+                    : 'text-muted-foreground/30 cursor-not-allowed'
+                }`}
+              >
+                <span className="hidden sm:inline">Next Year</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            
             {/* Month labels */}
             <div className="flex text-xs text-muted-foreground mb-1 ml-8 relative h-4">
             {monthLabels.map((label, i) => (
@@ -413,7 +563,7 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
             ))}
           </div>
           
-          <div className="flex gap-0.5 mt-2">
+          <div className="flex gap-0.5 mt-2 mb-2">
             {/* Day labels */}
             <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mr-1">
               {DAYS_OF_WEEK.map((day, i) => (
@@ -430,7 +580,31 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
                   const activity = activityMap.get(day.dateStr);
                   const count = activity?.count || 0;
                   const isSelected = activeDay?.date === day.dateStr;
-                  const isOOO = activity?.activities?.some(a => a.type === 'ooo') || false;
+                  const activities = activity?.activities || [];
+                  
+                  const styleInfo: DayStyleInfo = {
+                    isOOO: activities.some(a => a.type === 'ooo'),
+                    hasProgress: activities.some(a => a.type === 'progress'),
+                    hasProfile: activities.some(a => a.type === 'profile_update'),
+                    hasTaskUpdate: activities.some(a => a.type === 'task_update'),
+                    hasTaskAssigned: activities.some(a => a.type === 'task_assigned'),
+                    hasTaskStarted: activities.some(a => a.type === 'task_started'),
+                    hasTaskCompleted: activities.some(a => a.type === 'task_completed'),
+                    hasTaskRequest: activities.some(a => a.type === 'task_request'),
+                    hasExtension: activities.some(a => a.type === 'extension_request'),
+                  };
+                  
+                  // Determine what symbol to show in the cell
+                  let cellContent = null;
+                  if (styleInfo.hasTaskCompleted) {
+                    cellContent = <Check className="w-2.5 h-2.5 text-white dark:text-white" strokeWidth={3} />;
+                  } else if (styleInfo.hasTaskStarted) {
+                    cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
+                  } else if (styleInfo.hasTaskAssigned) {
+                    cellContent = <span className="text-[8px] font-bold text-white">A</span>;
+                  } else if (styleInfo.hasTaskRequest) {
+                    cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
+                  }
                   
                   return (
                     <button
@@ -438,9 +612,11 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
                       onClick={() => handleDayClick(day.dateStr)}
                       onMouseEnter={() => handleDayHover(day.dateStr)}
                       onMouseLeave={handleDayLeave}
-                      className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground ${getIntensityClass(count, isSelected, isOOO)}`}
-                      title={`${formatShortDate(day.dateStr)}: ${count} activities${isOOO ? ' (OOO)' : ''}`}
-                    />
+                      className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${buildDayStyle(count, isSelected, styleInfo)}`}
+                      title={`${formatShortDate(day.dateStr)}: ${count} activities`}
+                    >
+                      {cellContent}
+                    </button>
                   );
                 })}
               </div>
@@ -450,26 +626,55 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
           {/* Legend */}
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground justify-end flex-wrap">
             <div className="flex items-center gap-1">
-              <span>Less</span>
-              <div className="flex gap-0.5">
-                <div className="w-3 h-3 rounded-sm bg-muted" />
-                <div className="w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-900" />
-                <div className="w-3 h-3 rounded-sm bg-emerald-300 dark:bg-emerald-700" />
-                <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-600" />
-                <div className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-500" />
+              <div className="w-3 h-3 rounded-sm bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+                <span className="text-[8px] font-bold text-white">A</span>
               </div>
-              <span>More</span>
+              <span>Assigned</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+                <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>
+              </div>
+              <span>Started</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+              </div>
+              <span>Completed</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+                <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>
+              </div>
+              <span>Request</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-red-400 dark:ring-red-500" />
+              <span>Extension</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-sm bg-amber-400 dark:bg-amber-500" />
               <span>OOO</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-sm bg-blue-400 dark:bg-blue-500" />
+              <span>Task Update</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-400 dark:ring-emerald-500" />
+              <span>Progress</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-transparent border-2 border-dashed border-purple-400 dark:border-purple-500" />
+              <span>Profile</span>
             </div>
           </div>
         </div>
       </div>
 
         {/* Detail Panel */}
-        <div className="lg:w-72 shrink-0 border rounded-lg bg-card min-h-[200px]">
+        <div className="lg:w-72 shrink-0 border rounded-lg bg-card min-h-[200px] max-h-[400px] overflow-y-auto [scrollbar-gutter:stable]">
           <ActivityDetail selected={activeDay} isPinned={!!pinnedDay} />
         </div>
       </div>
