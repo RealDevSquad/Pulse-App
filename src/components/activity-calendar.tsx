@@ -349,7 +349,7 @@ interface MobileCalendarProps {
   selectedDate: string | null;
 }
 
-/** Mobile calendar - same GitHub-style horizontal format but one month at a time */
+/** Mobile calendar - monthly grid with same dot cells as desktop */
 function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalendarProps) {
   const [monthOffset, setMonthOffset] = useState(0);
   
@@ -374,33 +374,22 @@ function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalenda
     const endDate = new Date(lastOfMonth);
     endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
     
-    // Don't show days beyond today
-    if (endDate > today) {
-      endDate.setTime(today.getTime());
-    }
-    
-    // Build weeks array (same format as desktop)
-    const weeksArray: { date: Date; dateStr: string; inMonth: boolean }[][] = [];
-    let currentDate = new Date(startDate);
-    let currentWeek: { date: Date; dateStr: string; inMonth: boolean }[] = [];
+    // Build weeks array (rows of 7 days each)
+    const weeksArray: { date: Date; dateStr: string; inMonth: boolean; isFuture: boolean }[][] = [];
+    const currentDate = new Date(startDate);
     
     while (currentDate <= endDate) {
-      const dayOfWeek = currentDate.getDay();
+      const week: { date: Date; dateStr: string; inMonth: boolean; isFuture: boolean }[] = [];
       
-      if (dayOfWeek === 0 && currentWeek.length > 0) {
-        weeksArray.push(currentWeek);
-        currentWeek = [];
+      for (let i = 0; i < 7; i++) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const inMonth = currentDate.getMonth() === month;
+        const isFuture = currentDate > today;
+        week.push({ date: new Date(currentDate), dateStr, inMonth, isFuture });
+        currentDate.setDate(currentDate.getDate() + 1);
       }
       
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const inMonth = currentDate.getMonth() === month;
-      currentWeek.push({ date: new Date(currentDate), dateStr, inMonth });
-      
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    if (currentWeek.length > 0) {
-      weeksArray.push(currentWeek);
+      weeksArray.push(week);
     }
     
     return {
@@ -410,41 +399,52 @@ function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalenda
     };
   }, [monthOffset]);
   
+  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  
   return (
     <div className="w-full">
       {/* Month navigation */}
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={() => setMonthOffset(monthOffset - 1)}
-          className="p-1.5 hover:bg-muted rounded transition-colors"
+          className="p-2 hover:bg-muted rounded transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
-        <span className="text-sm font-medium">{monthLabel}</span>
+        <span className="text-base font-medium">{monthLabel}</span>
         <button
           onClick={() => setMonthOffset(monthOffset + 1)}
           disabled={!canGoNext}
-          className={`p-1.5 rounded transition-colors ${canGoNext ? 'hover:bg-muted' : 'opacity-30 cursor-not-allowed'}`}
+          className={`p-2 rounded transition-colors ${canGoNext ? 'hover:bg-muted' : 'opacity-30 cursor-not-allowed'}`}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </button>
       </div>
       
-      {/* GitHub-style horizontal grid */}
-      <div className="flex gap-0.5">
-        {/* Day labels */}
-        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mr-1">
-          {DAYS_OF_WEEK.map((day, i) => (
-            <div key={day} className="h-3 flex items-center" style={{ visibility: i % 2 === 1 ? 'visible' : 'hidden' }}>
-              {day}
-            </div>
-          ))}
-        </div>
-        
-        {/* Calendar grid - weeks as columns */}
+      {/* Day labels header */}
+      <div className="grid grid-cols-7 gap-1.5 mb-2">
+        {dayLabels.map((day, i) => (
+          <div key={i} className="text-xs text-muted-foreground text-center">
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar grid - same dot cells as desktop */}
+      <div className="grid gap-1.5">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-0.5">
+          <div key={weekIndex} className="grid grid-cols-7 gap-1.5 justify-items-center">
             {week.map((day) => {
+              // Future or outside month - render empty placeholder
+              if (day.isFuture || !day.inMonth) {
+                return (
+                  <div
+                    key={day.dateStr}
+                    className="w-5 h-5 rounded-full bg-muted/30"
+                  />
+                );
+              }
+              
               const activity = activityMap.get(day.dateStr);
               const count = activity?.count || 0;
               const isSelected = selectedDate === day.dateStr;
@@ -462,26 +462,26 @@ function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalenda
                 hasExtension: activities.some(a => a.type === 'extension_request'),
               };
               
-              // Determine cell content
+              // Same cell content as desktop
               let cellContent = null;
               if (styleInfo.hasTaskCompleted) {
-                cellContent = <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />;
+                cellContent = <Check className="w-3 h-3 text-white" strokeWidth={3} />;
               } else if (styleInfo.hasTaskStarted) {
-                cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
+                cellContent = <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">S</span>;
               } else if (styleInfo.hasTaskAssigned) {
-                cellContent = <span className="text-[8px] font-bold text-white">A</span>;
+                cellContent = <span className="text-[10px] font-bold text-white">A</span>;
               } else if (styleInfo.hasTaskRequest) {
-                cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
+                cellContent = <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
               }
               
-              // Dim days outside current month
-              const opacity = day.inMonth ? '' : 'opacity-30';
+              // Replace rounded-sm with rounded-full for circles
+              const baseStyle = buildDayStyle(count, isSelected, styleInfo).replace(/rounded-sm/g, 'rounded-full');
               
               return (
                 <button
                   key={day.dateStr}
                   onClick={() => onDayClick(day.dateStr)}
-                  className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${opacity} ${buildDayStyle(count, isSelected, styleInfo)}`}
+                  className={`w-5 h-5 rounded-full transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${baseStyle}`}
                   title={`${formatShortDate(day.dateStr)}: ${count} activities`}
                 >
                   {cellContent}
@@ -492,23 +492,51 @@ function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalenda
         ))}
       </div>
       
-      {/* Compact legend */}
-      <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground justify-center">
+      {/* Legend with circles - all items from desktop */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-4 text-xs text-muted-foreground justify-center">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-sm bg-blue-600 flex items-center justify-center">
+          <div className="w-4 h-4 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
             <span className="text-[8px] font-bold text-white">A</span>
           </div>
           <span>Assigned</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center">
-            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+          <div className="w-4 h-4 rounded-full bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">S</span>
           </div>
-          <span>Done</span>
+          <span>Started</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-sm bg-amber-400" />
+          <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+          </div>
+          <span>Completed</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 rounded-full bg-transparent ring-2 ring-inset ring-emerald-500 dark:ring-emerald-400 flex items-center justify-center">
+            <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>
+          </div>
+          <span>Request</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 rounded-full bg-transparent ring-2 ring-inset ring-red-400 dark:ring-red-500" />
+          <span>Extension</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 rounded-full bg-amber-400 dark:bg-amber-500" />
           <span>OOO</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-blue-400 dark:bg-blue-500" />
+          <span>Task Update</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 rounded-full bg-transparent ring-2 ring-inset ring-emerald-400 dark:ring-emerald-500" />
+          <span>Progress</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 rounded-full bg-transparent border-2 border-dashed border-purple-400 dark:border-purple-500" />
+          <span>Profile</span>
         </div>
       </div>
     </div>

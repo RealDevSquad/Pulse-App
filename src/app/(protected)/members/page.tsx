@@ -107,10 +107,10 @@ export default async function MembersPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Members</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Members</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           {total} members found
         </p>
       </div>
@@ -124,7 +124,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-2">
         {users.map((user) => {
           const discordInfo = getDiscordBadge(user.roles?.in_discord);
           const archivedInfo = getArchivedBadge(user.roles?.archived);
@@ -132,7 +132,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
             <Link 
               key={user.id} 
               href={`/member/${user.id}`}
-              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
             >
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user.picture?.url} alt={user.username} />

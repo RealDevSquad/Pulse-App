@@ -8,7 +8,7 @@ import { TasksFilterBar } from '@/components/tasks-filter-bar';
 import { TasksTable } from '@/components/tasks-table';
 import { TaskActionsMenu } from '@/components/task-actions-menu';
 import Link from 'next/link';
-import { cn, getStatusStyle, formatRelativeTime } from '@/lib/utils';
+import { cn, getStatusBadgeStyle, formatRelativeTime } from '@/lib/utils';
 
 type TaskTab = 'current' | 'overdue';
 
@@ -90,10 +90,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
     const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             {total} overdue tasks
           </p>
         </div>
@@ -128,27 +128,38 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-2">
           {tasks.map((task) => {
-            const statusInfo = getStatusStyle(task.status);
+            const statusInfo = getStatusBadgeStyle(task.status);
             const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);
+            const { text: dueText, isOverdue } = (() => {
+              if (!task.endsOn) return { text: '-', isOverdue: false };
+              const ms = task.endsOn > 1e12 ? task.endsOn : task.endsOn * 1000;
+              const now = Date.now();
+              const diff = ms - now;
+              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+              const isOver = days < 0;
+              let text: string;
+              if (days < -365) text = `${Math.floor(-days / 365)}y overdue`;
+              else if (days < -30) text = `${Math.floor(-days / 30)}mo overdue`;
+              else if (days < -7) text = `${Math.floor(-days / 7)}w overdue`;
+              else if (days < -1) text = `${-days}d overdue`;
+              else if (days === -1) text = '1d overdue';
+              else text = 'Due today';
+              return { text, isOverdue: isOver };
+            })();
             return (
-              <div key={task.id} className="p-4 rounded-lg border space-y-3">
+              <div key={task.id} className="p-4 rounded-lg border space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <a
                       href={`https://status.realdevsquad.com/tasks/${task.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium line-clamp-2 hover:underline"
+                      className="font-medium line-clamp-2 hover:underline text-sm"
                     >
                       {task.title}
                     </a>
-                    {task.type && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Type: {task.type}
-                      </div>
-                    )}
                   </div>
                   <span className={statusInfo.className}>
                     {statusInfo.label}
@@ -158,35 +169,42 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 <div className="flex items-center justify-between gap-2">
                   {task.assigneeUser ? (
                     <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                      <Avatar className="h-6 w-6">
+                      <Avatar className="h-5 w-5">
                         <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
-                        <AvatarFallback className="text-xs">
+                        <AvatarFallback className="text-[10px]">
                           {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm hover:underline">
+                      <span className="text-xs hover:underline">
                         {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                       </span>
                     </Link>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Unassigned</span>
+                    <span className="text-xs text-muted-foreground">Unassigned</span>
                   )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{updatedTime}</span>
-                    {isRoot && (
-                      <TaskActionsMenu
-                        taskId={task.id}
-                        taskTitle={task.title}
-                        taskStatus={task.status}
-                        taskType={task.type}
-                        taskPriority={task.priority}
-                        taskEndsOn={task.endsOn}
-                        hasAssignee={!!task.assignee}
-                        assigneeName={task.assigneeUser ? `${task.assigneeUser.first_name} ${task.assigneeUser.last_name}` : undefined}
-                        assigneePicture={task.assigneeUser?.picture?.url}
-                      />
-                    )}
-                  </div>
+                  <span className={cn(
+                    'text-xs font-medium px-2 py-0.5 rounded-full',
+                    isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
+                  )}>
+                    {dueText}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-muted-foreground">Updated {updatedTime}</span>
+                  {isRoot && (
+                    <TaskActionsMenu
+                      taskId={task.id}
+                      taskTitle={task.title}
+                      taskStatus={task.status}
+                      taskType={task.type}
+                      taskPriority={task.priority}
+                      taskEndsOn={task.endsOn}
+                      hasAssignee={!!task.assignee}
+                      assigneeName={task.assigneeUser ? `${task.assigneeUser.first_name} ${task.assigneeUser.last_name}` : undefined}
+                      assigneePicture={task.assigneeUser?.picture?.url}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -260,16 +278,16 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           {total} tasks found
         </p>
       </div>
 
       {/* Tabs and Filter */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
         <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
           <Link
             href="/tasks?tab=current"
@@ -299,51 +317,89 @@ export default async function TasksPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-2">
         {tasks.map((task) => {
-          const statusInfo = getStatusStyle(task.status);
+          const statusInfo = getStatusBadgeStyle(task.status);
           const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);
+          const isDone = task.status?.toUpperCase() === 'COMPLETED' || task.status?.toUpperCase() === 'DONE';
+          const dueInfo = (() => {
+            if (!task.endsOn || task.status?.toUpperCase() === 'BACKLOG') return null;
+            const ms = task.endsOn > 1e12 ? task.endsOn : task.endsOn * 1000;
+            const now = Date.now();
+            const diff = ms - now;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const isOverdue = days < 0 && !isDone;
+            let text: string;
+            if (days < -365) text = isDone ? `${Math.floor(-days / 365)}y ago` : `${Math.floor(-days / 365)}y overdue`;
+            else if (days < -30) text = isDone ? `${Math.floor(-days / 30)}mo ago` : `${Math.floor(-days / 30)}mo overdue`;
+            else if (days < -7) text = isDone ? `${Math.floor(-days / 7)}w ago` : `${Math.floor(-days / 7)}w overdue`;
+            else if (days < -1) text = isDone ? `${-days}d ago` : `${-days}d overdue`;
+            else if (days === -1) text = isDone ? '1d ago' : '1d overdue';
+            else if (days === 0) text = 'Today';
+            else if (days === 1) text = 'Tomorrow';
+            else if (days < 7) text = `In ${days}d`;
+            else if (days < 30) text = `In ${Math.floor(days / 7)}w`;
+            else text = `In ${Math.floor(days / 30)}mo`;
+            return { text, isOverdue };
+          })();
           return (
-            <div key={task.id} className="p-4 rounded-lg border space-y-3">
+            <div key={task.id} className="p-4 rounded-lg border space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <a
                     href={`https://status.realdevsquad.com/tasks/${task.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium line-clamp-2 hover:underline"
+                    className="font-medium line-clamp-2 hover:underline text-sm"
                   >
                     {task.title}
                   </a>
-                  {task.type && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Type: {task.type}
-                    </div>
-                  )}
                 </div>
-                <span className={statusInfo.className}>
+                <span className={cn(statusInfo.className, 'text-xs')}>
                   {statusInfo.label}
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-2">
                 {task.assigneeUser ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
+                  <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
+                    <Avatar className="h-5 w-5">
                       <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback className="text-[10px]">
                         {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs hover:underline">
                       {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                     </span>
-                  </div>
+                  </Link>
                 ) : (
-                  <span className="text-sm text-muted-foreground">Unassigned</span>
+                  <span className="text-xs text-muted-foreground">Unassigned</span>
                 )}
+                {dueInfo && (
+                  <span className={cn(
+                    'text-xs font-medium px-2 py-0.5 rounded-full',
+                    dueInfo.isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
+                  )}>
+                    {dueInfo.text}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground">Updated {updatedTime}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{updatedTime}</span>
+                  {task.github?.issue?.html_url && (
+                    <a
+                      href={task.github.issue.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      GitHub
+                    </a>
+                  )}
                   {isRoot && (
                     <TaskActionsMenu
                       taskId={task.id}
@@ -359,18 +415,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   )}
                 </div>
               </div>
-
-              {task.github?.issue?.html_url && (
-                <a
-                  href={task.github.issue.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  View on GitHub
-                </a>
-              )}
 
               {task.status?.toUpperCase() === 'IN_PROGRESS' && task.percentCompleted !== undefined && (
                 <div className="space-y-1">
