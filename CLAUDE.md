@@ -1,5 +1,13 @@
 # Pulse App - Development Guidelines
 
+## Design Reference
+
+See `docs/DESIGN.md` for:
+- Layout structure and wireframes
+- Refactoring UI principles (typography, hierarchy, spacing)
+- Color palette and status indicators
+- Chart guidelines
+
 ## Mobile Responsiveness
 
 All features MUST be mobile responsive. Follow these breakpoints:
