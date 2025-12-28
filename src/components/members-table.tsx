@@ -2,6 +2,7 @@
 
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown, Github } from 'lucide-react';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -399,8 +400,11 @@ export function MembersTable({ users, filters, isRoot = false }: MembersTablePro
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No members found.
+              <TableCell colSpan={columns.length} className="h-32 text-center">
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+                  <span>No members found</span>
+                </div>
               </TableCell>
             </TableRow>
           )}

@@ -8,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import type { TaskSortField, SortOrder, TaskStatusFilter } from '@/lib/tasks-cache';
 
 interface FilterState {
@@ -48,17 +47,21 @@ export function TasksFilterBar({ filters }: TasksFilterBarProps) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor="status-filter" className="text-sm whitespace-nowrap">
-        Status:
-      </Label>
+    <div className="flex items-center">
       <Select value={filters.statusFilter} onValueChange={handleStatusChange}>
-        <SelectTrigger id="status-filter" className="w-[140px]">
-          <SelectValue placeholder="Filter by status" />
+        <SelectTrigger 
+          className="w-[140px] h-10 bg-background hover:bg-accent/50 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          aria-label="Filter by status"
+        >
+          <SelectValue placeholder="Filter status" />
         </SelectTrigger>
         <SelectContent>
           {statusOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem 
+              key={option.value} 
+              value={option.value}
+              className="min-h-[44px] flex items-center cursor-pointer"
+            >
               {option.label}
             </SelectItem>
           ))}

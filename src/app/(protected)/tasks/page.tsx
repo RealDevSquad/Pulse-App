@@ -2,6 +2,7 @@ import { getCachedTasks, type TaskSortField, type SortOrder, type TaskStatusFilt
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { TasksFilterBar } from '@/components/tasks-filter-bar';
@@ -90,9 +91,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
     const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
     return (
-      <div className="space-y-3 sm:space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Tasks</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
             {total} overdue tasks
           </p>
@@ -100,11 +101,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
         {/* Tabs */}
         <div className="flex items-center gap-4">
-          <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
+          <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
             <Link
               href="/tasks?tab=current"
               className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all',
+                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
                 'hover:bg-background/50'
               )}
             >
@@ -113,8 +114,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
             <Link
               href="/tasks?tab=overdue"
               className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all',
-                'bg-background text-foreground shadow'
+                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
+                'bg-background text-foreground shadow-sm'
               )}
             >
               Overdue
@@ -128,7 +129,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-2">
+        <div className="md:hidden space-y-3">
           {tasks.map((task) => {
             const statusInfo = getStatusBadgeStyle(task.status);
             const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);
@@ -149,33 +150,38 @@ export default async function TasksPage({ searchParams }: PageProps) {
               return { text, isOverdue: isOver };
             })();
             return (
-              <div key={task.id} className="p-4 rounded-lg border space-y-3">
+              <div key={task.id} className="p-4 rounded-lg bg-card border shadow-sm space-y-3 overflow-hidden">
+                {/* Header: Title + Status */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <a
                       href={`https://status.realdevsquad.com/tasks/${task.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold line-clamp-2 hover:underline"
+                      className="font-semibold text-foreground leading-snug line-clamp-2 hover:text-primary hover:underline transition-colors"
                     >
                       {task.title}
                     </a>
                   </div>
-                  <span className={statusInfo.className}>
+                  <span className={cn(statusInfo.className, 'shrink-0 text-xs')}>
                     {statusInfo.label}
                   </span>
                 </div>
 
+                {/* Assignee + Due Date */}
                 <div className="flex items-center justify-between gap-2">
                   {task.assigneeUser ? (
-                    <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                      <Avatar className="h-6 w-6">
+                    <Link 
+                      href={`/member/${task.assignee}`} 
+                      className="flex items-center gap-2 min-w-0 py-1 hover:text-primary transition-colors group"
+                    >
+                      <Avatar className="h-6 w-6 shrink-0">
                         <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
                         <AvatarFallback className="text-xs">
                           {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-muted-foreground hover:underline">
+                      <span className="text-sm text-muted-foreground group-hover:underline truncate">
                         {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                       </span>
                     </Link>
@@ -183,15 +189,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     <span className="text-sm text-muted-foreground">Unassigned</span>
                   )}
                   <span className={cn(
-                    'text-sm font-medium px-2.5 py-0.5 rounded-full',
-                    isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
+                    'text-xs font-medium px-2 py-0.5 rounded-full shrink-0',
+                    isOverdue 
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                      : 'bg-muted text-muted-foreground'
                   )}>
                     {dueText}
                   </span>
                 </div>
 
+                {/* Footer: Updated time + Actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-muted-foreground/70">Updated {updatedTime}</span>
+                  <span className="text-sm text-muted-foreground/70">{updatedTime}</span>
                   {isRoot && (
                     <TaskActionsMenu
                       taskId={task.id}
@@ -211,16 +220,17 @@ export default async function TasksPage({ searchParams }: PageProps) {
           })}
 
           {tasks.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No overdue tasks found.
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+              <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+              <span>No overdue tasks found</span>
             </div>
           )}
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between gap-4 pt-2">
+            <p className="text-sm text-muted-foreground shrink-0">
               Page {page} of {totalPages}
             </p>
             <div className="flex gap-2">
@@ -229,13 +239,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 size="sm"
                 asChild
                 disabled={page <= 1}
+                className="h-10"
               >
                 <Link
                   href={`/tasks?tab=overdue&page=${page - 1}`}
                   className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
+                  <span className="hidden sm:inline">Previous</span>
                 </Link>
               </Button>
               <Button
@@ -243,12 +254,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 size="sm"
                 asChild
                 disabled={!hasMore}
+                className="h-10"
               >
                 <Link
                   href={`/tasks?tab=overdue&page=${page + 1}`}
                   className={!hasMore ? 'pointer-events-none opacity-50' : ''}
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Link>
               </Button>
@@ -278,22 +290,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <div className="space-y-3 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Tasks</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           {total} tasks found
         </p>
       </div>
 
       {/* Tabs and Filter */}
-      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-        <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
+      <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
           <Link
             href="/tasks?tab=current"
             className={cn(
-              'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all',
-              'bg-background text-foreground shadow'
+              'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
+              'bg-background text-foreground shadow-sm'
             )}
           >
             Current
@@ -301,7 +313,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
           <Link
             href="/tasks?tab=overdue"
             className={cn(
-              'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all',
+              'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
               'hover:bg-background/50'
             )}
           >
@@ -317,7 +329,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-2">
+      <div className="md:hidden space-y-3">
         {tasks.map((task) => {
           const statusInfo = getStatusBadgeStyle(task.status);
           const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);
@@ -343,33 +355,52 @@ export default async function TasksPage({ searchParams }: PageProps) {
             return { text, isOverdue };
           })();
           return (
-            <div key={task.id} className="p-4 rounded-lg border space-y-3">
+            <div key={task.id} className="p-4 rounded-lg bg-card border shadow-sm space-y-3 overflow-hidden">
+              {/* Header: Title + Status */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <a
                     href={`https://status.realdevsquad.com/tasks/${task.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold line-clamp-2 hover:underline"
+                    className="font-semibold text-foreground leading-snug line-clamp-2 hover:text-primary hover:underline transition-colors"
                   >
                     {task.title}
                   </a>
                 </div>
-                <span className={statusInfo.className}>
-                  {statusInfo.label}
-                </span>
+                <div className="shrink-0 flex flex-col gap-1">
+                  <span className={cn(statusInfo.className, 'text-xs')}>
+                    {statusInfo.label}
+                  </span>
+                  {/* Progress bar for in-progress tasks */}
+                  {task.status?.toUpperCase() === 'IN_PROGRESS' && task.percentCompleted !== undefined && (
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${task.percentCompleted}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums">{task.percentCompleted}%</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Assignee + Due Date */}
               <div className="flex items-center justify-between gap-2">
                 {task.assigneeUser ? (
-                  <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                    <Avatar className="h-6 w-6">
+                  <Link 
+                    href={`/member/${task.assignee}`} 
+                    className="flex items-center gap-2 min-w-0 py-1 hover:text-primary transition-colors group"
+                  >
+                    <Avatar className="h-6 w-6 shrink-0">
                       <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
                       <AvatarFallback className="text-xs">
                         {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm text-muted-foreground hover:underline">
+                    <span className="text-sm text-muted-foreground group-hover:underline truncate">
                       {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                     </span>
                   </Link>
@@ -378,26 +409,29 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
                 {dueInfo && (
                   <span className={cn(
-                    'text-sm font-medium px-2.5 py-0.5 rounded-full',
-                    dueInfo.isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
+                    'text-xs font-medium px-2 py-0.5 rounded-full shrink-0',
+                    dueInfo.isOverdue 
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                      : 'bg-muted text-muted-foreground'
                   )}>
                     {dueInfo.text}
                   </span>
                 )}
               </div>
 
+              {/* Footer: Updated time + GitHub + Actions */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-muted-foreground/70">Updated {updatedTime}</span>
-                <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground/70">{updatedTime}</span>
+                <div className="flex items-center gap-1 shrink-0">
                   {task.github?.issue?.html_url && (
                     <a
                       href={task.github.issue.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                      className="inline-flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="View on GitHub"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      GitHub
+                      <ExternalLink className="h-4 w-4" />
                     </a>
                   )}
                   {isRoot && (
@@ -416,35 +450,23 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              {task.status?.toUpperCase() === 'IN_PROGRESS' && task.percentCompleted !== undefined && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Progress</span>
-                    <span>{task.percentCompleted}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${task.percentCompleted}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+
             </div>
           );
         })}
 
         {tasks.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            No tasks found.
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+            <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+            <span>No tasks found</span>
           </div>
         )}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between gap-4 pt-2">
+          <p className="text-sm text-muted-foreground shrink-0">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">
@@ -453,13 +475,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
               size="sm"
               asChild
               disabled={page <= 1}
+              className="h-10"
             >
               <Link
                 href={buildUrl(filters, { page: page - 1 })}
                 className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                <span className="hidden sm:inline">Previous</span>
               </Link>
             </Button>
             <Button
@@ -467,12 +490,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
               size="sm"
               asChild
               disabled={!hasMore}
+              className="h-10"
             >
               <Link
                 href={buildUrl(filters, { page: page + 1 })}
                 className={!hasMore ? 'pointer-events-none opacity-50' : ''}
               >
-                Next
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Link>
             </Button>

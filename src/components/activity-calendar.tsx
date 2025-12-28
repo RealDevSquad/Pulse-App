@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { ListTodo, FileText, Plane, User, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Clock, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -670,6 +670,74 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
       activities: activity?.activities || [],
     };
   };
+
+  // Flatten weeks into a grid for keyboard navigation
+  const flatDays = useMemo(() => {
+    const days: { dateStr: string; weekIndex: number; dayIndex: number }[] = [];
+    weeks.forEach((week, weekIndex) => {
+      week.forEach((day, dayIndex) => {
+        days.push({ dateStr: day.dateStr, weekIndex, dayIndex });
+      });
+    });
+    return days;
+  }, [weeks]);
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const currentDate = pinnedDay?.date || hoveredDay?.date;
+    if (!currentDate) return;
+    
+    // Find current position in grid
+    const currentIndex = flatDays.findIndex(d => d.dateStr === currentDate);
+    if (currentIndex === -1) return;
+    
+    const current = flatDays[currentIndex];
+    let newIndex = -1;
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+        // Move to previous day (previous week, same row)
+        newIndex = currentIndex - 7;
+        break;
+      case 'ArrowRight':
+        // Move to next day (next week, same row)
+        newIndex = currentIndex + 7;
+        break;
+      case 'ArrowUp':
+        // Move up one row (previous day in week)
+        if (current.dayIndex > 0) {
+          newIndex = currentIndex - 1;
+        }
+        break;
+      case 'ArrowDown':
+        // Move down one row (next day in week)
+        if (current.dayIndex < 6) {
+          newIndex = currentIndex + 1;
+        }
+        break;
+      case 'Escape':
+        setPinnedDay(null);
+        setHoveredDay(null);
+        return;
+      default:
+        return;
+    }
+    
+    if (newIndex >= 0 && newIndex < flatDays.length) {
+      e.preventDefault();
+      const newDay = flatDays[newIndex];
+      const dayData = getDayData(newDay.dateStr);
+      setPinnedDay(dayData);
+    }
+  }, [pinnedDay, hoveredDay, flatDays, getDayData]);
+
+  // Add keyboard listener when a day is selected
+  useEffect(() => {
+    if (pinnedDay || hoveredDay) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [pinnedDay, hoveredDay, handleKeyDown]);
 
   const handleDayClick = (dateStr: string) => {
     const dayData = getDayData(dateStr);

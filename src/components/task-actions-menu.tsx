@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Pencil, UserMinus, Loader2, Save } from 'lucide-react';
+import { MoreHorizontal, Pencil, UserMinus, Save } from 'lucide-react';
+import { LoaderPinwheelIcon } from '@/components/ui/loader-pinwheel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -364,7 +365,7 @@ export function TaskActionsMenu({
               disabled={isSaving || !hasChanges}
             >
               {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <LoaderPinwheelIcon size={16} isAnimating className="mr-2" />
               ) : (
                 <Save className="h-4 w-4 mr-2" />
               )}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Info, Loader2 } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { LoaderPinwheelIcon } from '@/components/ui/loader-pinwheel';
 import {
   Popover,
   PopoverContent,
@@ -70,7 +71,7 @@ export function UserInfoPopover({ userId }: UserInfoPopoverProps) {
       >
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <LoaderPinwheelIcon size={24} isAnimating className="text-muted-foreground" />
           </div>
         )}
         {error && (

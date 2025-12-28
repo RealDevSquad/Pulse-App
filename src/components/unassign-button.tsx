@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserMinus, Loader2 } from 'lucide-react';
+import { UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoaderPinwheelIcon } from '@/components/ui/loader-pinwheel';
 
 interface UnassignButtonProps {
   taskId: string;
@@ -46,7 +47,7 @@ export function UnassignButton({ taskId, variant = 'icon' }: UnassignButtonProps
         className="text-destructive hover:text-destructive"
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+          <LoaderPinwheelIcon size={16} isAnimating className="mr-1" />
         ) : (
           <UserMinus className="h-4 w-4 mr-1" />
         )}
@@ -65,7 +66,7 @@ export function UnassignButton({ taskId, variant = 'icon' }: UnassignButtonProps
       title="Unassign task"
     >
       {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <LoaderPinwheelIcon size={16} isAnimating />
       ) : (
         <UserMinus className="h-4 w-4" />
       )}

@@ -2,6 +2,7 @@
 
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, Sparkles, Bug, Zap, FileText, Wrench, HelpCircle, Github } from 'lucide-react';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -50,7 +51,7 @@ function PriorityBars({ priority }: { priority?: string }) {
           className={`w-1 rounded-sm transition-colors ${
             bar <= info.bars 
               ? info.fillClass 
-              : 'bg-gray-200'
+              : 'bg-gray-200 dark:bg-gray-700'
           }`}
           style={{ height: `${bar * 4 + 4}px` }}
         />
@@ -109,17 +110,17 @@ function SortableHeader({
   return (
     <Link
       href={buildUrl(filters, { sortBy: sortKey, sortOrder: nextOrder })}
-      className="flex items-center gap-1 hover:text-foreground transition-colors"
+      className="flex items-center gap-1.5 hover:text-foreground transition-colors font-medium"
     >
       {label}
       {isActive ? (
         filters.sortOrder === 'asc' ? (
-          <ArrowUp className="h-4 w-4" />
+          <ArrowUp className="h-3.5 w-3.5" />
         ) : (
-          <ArrowDown className="h-4 w-4" />
+          <ArrowDown className="h-3.5 w-3.5" />
         )
       ) : (
-        <ArrowUpDown className="h-4 w-4 opacity-50" />
+        <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
       )}
     </Link>
   );
@@ -127,14 +128,14 @@ function SortableHeader({
 
 function ProgressBar({ percent }: { percent: number }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-16 bg-muted rounded-full overflow-hidden">
+    <div className="flex items-center gap-2.5">
+      <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-primary rounded-full transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="text-xs text-muted-foreground">{percent}%</span>
+      <span className="text-xs text-muted-foreground font-medium tabular-nums">{percent}%</span>
     </div>
   );
 }
@@ -153,7 +154,7 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
           href={`https://status.realdevsquad.com/tasks/${row.original.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium line-clamp-2 hover:text-foreground hover:underline transition-colors"
+          className="font-semibold text-foreground line-clamp-2 hover:text-primary hover:underline transition-colors"
         >
           {row.original.title}
         </a>
@@ -167,20 +168,20 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
         const user = row.original.assigneeUser;
         const assigneeId = row.original.assignee;
         if (!user) {
-          return <span className="text-muted-foreground">Unassigned</span>;
+          return <span className="text-muted-foreground/70">Unassigned</span>;
         }
         return (
           <Link
             href={`/member/${assigneeId}`}
-            className="flex items-center gap-2 hover:text-primary transition-colors"
+            className="flex items-center gap-2.5 hover:text-primary transition-colors group"
           >
-            <Avatar className="h-6 w-6">
+            <Avatar className="h-7 w-7 ring-2 ring-background">
               <AvatarImage src={user.picture?.url} alt={user.username} />
-              <AvatarFallback className="text-xs">
+              <AvatarFallback className="text-xs font-medium">
                 {getInitials(user.first_name, user.last_name, user.username)}
               </AvatarFallback>
             </Avatar>
-            <span className="text-sm hover:underline">
+            <span className="text-sm font-medium text-foreground group-hover:underline">
               {user.first_name} {user.last_name}
             </span>
           </Link>
@@ -194,13 +195,13 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       cell: ({ row }) => {
         const type = row.original.type;
         if (!type) {
-          return <span className="text-muted-foreground">-</span>;
+          return <span className="text-muted-foreground/60">-</span>;
         }
         const info = getTaskTypeInfo(type);
         return (
           <div className="flex items-center group">
             <TaskTypeIcon type={type} />
-            <span className={`${info.textClass} max-w-0 overflow-hidden group-hover:max-w-24 group-hover:ml-1.5 transition-all duration-200 whitespace-nowrap`}>
+            <span className={`${info.textClass} max-w-0 overflow-hidden group-hover:max-w-24 group-hover:ml-1.5 transition-all duration-200 whitespace-nowrap text-sm font-medium`}>
               {info.label}
             </span>
           </div>
@@ -214,13 +215,13 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       cell: ({ row }) => {
         const priority = row.original.priority;
         if (!priority) {
-          return <span className="text-muted-foreground">-</span>;
+          return <span className="text-muted-foreground/60">-</span>;
         }
         const info = getPriorityInfo(priority);
         return (
           <div className="flex items-center group">
             <PriorityBars priority={priority} />
-            <span className={`${info.textClass} max-w-0 overflow-hidden group-hover:max-w-20 group-hover:ml-1.5 transition-all duration-200 whitespace-nowrap`}>
+            <span className={`${info.textClass} max-w-0 overflow-hidden group-hover:max-w-20 group-hover:ml-1.5 transition-all duration-200 whitespace-nowrap text-sm font-medium`}>
               {info.label}
             </span>
           </div>
@@ -249,12 +250,12 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       cell: ({ row }) => {
         const status = row.original.status?.toUpperCase();
         if (status === 'BACKLOG') {
-          return <span>-</span>;
+          return <span className="text-muted-foreground/60">-</span>;
         }
         const isDone = status === 'COMPLETED' || status === 'DONE';
         const { text, isOverdue } = formatDueDate(row.original.endsOn, isDone);
         return (
-          <span className={isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}>
+          <span className={isOverdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
             {text}
           </span>
         );
@@ -273,7 +274,7 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
             href={`https://status.realdevsquad.com/tasks/${taskId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+            className="text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
           >
             {time}
           </a>
@@ -289,7 +290,7 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
         const status = row.original.status?.toUpperCase();
         const isInProgress = status === 'IN_PROGRESS';
         if (!isInProgress) {
-          return <span className="text-muted-foreground">-</span>;
+          return <span className="text-muted-foreground/60">-</span>;
         }
         const percent = row.original.percentCompleted ?? 0;
         return <ProgressBar percent={percent} />;
@@ -302,12 +303,12 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       size: 100,
       cell: ({ row }) => {
         const time = formatRelativeTime(row.original.createdAt);
-        return <span className="text-muted-foreground">{time}</span>;
+        return <span className="text-muted-foreground/70">{time}</span>;
       },
     },
     {
       id: 'github',
-      header: () => <Github className="h-4 w-4 text-muted-foreground" />,
+      header: () => <Github className="h-4 w-4 text-muted-foreground/70" />,
       size: 50,
       cell: ({ row }) => {
         const url = row.original.github?.issue?.html_url;
@@ -317,7 +318,7 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="View on GitHub"
           >
             <ExternalLink className="h-4 w-4" />
@@ -366,16 +367,16 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
   const totalSize = table.getCenterTotalSize();
 
   return (
-    <div className="rounded-lg border overflow-auto">
+    <div className="rounded-xl border bg-card shadow-sm overflow-auto">
       <Table style={{ width: '100%', minWidth: totalSize }}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
                   style={{ width: `${(header.getSize() / totalSize) * 100}%` }}
-                  className="relative group"
+                  className="relative group h-12 px-4 bg-muted/30 first:rounded-tl-xl last:rounded-tr-xl"
                 >
                   {header.isPlaceholder
                     ? null
@@ -397,9 +398,13 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row, index) => (
-              <TableRowMotion key={row.id} index={index}>
+              <TableRowMotion 
+                key={row.id} 
+                index={index}
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+              >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="px-4 py-3">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -407,8 +412,11 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No tasks found.
+              <TableCell colSpan={columns.length} className="h-32 text-center">
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+                  <span>No tasks found</span>
+                </div>
               </TableCell>
             </TableRow>
           )}
