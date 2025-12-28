@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Users, Calendar, ListTodo, TrendingUp, CheckCircle2, AlertTriangle, Activity, ListChecks, CalendarPlus, Clock } from 'lucide-react';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { StaggerContainer, StaggerItem, HoverLift, FadeIn } from '@/components/ui/motion';
 import type { OrgHealthMetrics, DailyActivityBreakdown } from '@/lib/logs-cache';
 
@@ -349,9 +350,10 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
                   </Link>
                 ))}
                 {orgHealth.topContributors.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No activity data yet
-                  </p>
+                  <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
+                    <FolderOpenIcon size={28} animateOnMount className="text-muted-foreground/50" />
+                    <span className="text-sm">No activity data yet</span>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -393,9 +395,10 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
                   </Link>
                 ))}
                 {orgHealth.atRiskMembers.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No members with multiple extension requests
-                  </p>
+                  <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
+                    <CheckCircle2 className="h-7 w-7 text-emerald-500/50" />
+                    <span className="text-sm">No members with multiple extension requests</span>
+                  </div>
                 )}
               </div>
             </CardContent>

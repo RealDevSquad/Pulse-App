@@ -129,7 +129,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-6">
           {tasks.map((task) => {
             const statusInfo = getStatusBadgeStyle(task.status);
             const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);
@@ -329,7 +329,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-6">
         {tasks.map((task) => {
           const statusInfo = getStatusBadgeStyle(task.status);
           const updatedTime = formatRelativeTime(task.updatedAt || task.updated_at);

@@ -635,44 +635,44 @@ export default async function MemberPage({ params }: PageProps) {
 
       {/* Productivity Stats (Last 30 Days) */}
       <Card>
-        <CardHeader className="p-2 sm:p-6">
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
             Productivity (Last 30 Days)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4">
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold text-blue-600">{logsActivity.tasksAssigned}</p>
-              <p className="text-sm text-muted-foreground">Assigned</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600">{logsActivity.tasksAssigned}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Assigned</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold text-emerald-600">{logsActivity.tasksStarted}</p>
-              <p className="text-sm text-muted-foreground">Started</p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-600">{logsActivity.tasksStarted}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Started</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold text-emerald-600">{logsActivity.tasksCompleted}</p>
-              <p className="text-sm text-muted-foreground">Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-600">{logsActivity.tasksCompleted}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold">{logsActivity.taskUpdates}</p>
-              <p className="text-sm text-muted-foreground">Updates</p>
+              <p className="text-xl sm:text-2xl font-bold">{logsActivity.taskUpdates}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Updates</p>
             </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className={`text-2xl font-bold ${logsActivity.extensionRequests > 0 ? 'text-red-600' : ''}`}>
+            <div className="text-center p-3 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
+              <p className={`text-xl sm:text-2xl font-bold ${logsActivity.extensionRequests > 0 ? 'text-red-600' : ''}`}>
                 {logsActivity.extensionRequests}
               </p>
-              <p className="text-sm text-muted-foreground">Extensions</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Extensions</p>
             </div>
           </div>
           {logsActivity.extensionRequests > 2 && (
             <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-4 w-4" />
+              <div className="flex items-start sm:items-center gap-2 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0" />
                 <span className="text-sm font-medium">This member has requested multiple deadline extensions</span>
               </div>
-              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1 ml-6">
                 Consider reaching out to see if they need support or if task estimates need adjustment.
               </p>
             </div>
@@ -696,29 +696,30 @@ export default async function MemberPage({ params }: PageProps) {
       {/* Active Tasks */}
       {userTasks.length > 0 && (
         <Card>
-          <CardHeader className="p-3 sm:p-6">
+          <CardHeader className="p-4 sm:p-6">
             <CardTitle className="text-base sm:text-lg">Active Tasks ({userTasks.length})</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            <div className="space-y-2 sm:space-y-3">
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+            <div className="space-y-3">
               {userTasks.map((task) => (
-                <div key={task.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold line-clamp-1">{task.title}</div>
-                    {task.github?.issue?.html_url && (
-                      <a
-                        href={task.github.issue.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        View on GitHub
-                      </a>
-                    )}
+                <div key={task.id} className="p-3 sm:p-4 rounded-lg border bg-muted/30 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="font-semibold text-foreground line-clamp-2 flex-1 min-w-0">{task.title}</div>
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      {task.status?.replace('_', ' ')}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="shrink-0 text-sm">
-                    {task.status?.replace('_', ' ')}
-                  </Badge>
+                  {task.github?.issue?.html_url && (
+                    <a
+                      href={task.github.issue.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                    >
+                      <Github className="h-3.5 w-3.5" />
+                      View on GitHub
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
