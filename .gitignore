@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# Design resources
+Refactoring-UI-Package/
