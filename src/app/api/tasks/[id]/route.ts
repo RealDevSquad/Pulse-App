@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
-import { db } from '@/lib/firebase-admin';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+
+const RDS_API_BASE = 'https://api.realdevsquad.com';
 
 export async function PATCH(
   request: Request,
@@ -17,12 +19,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the task to verify it exists
-    const taskRef = db.collection('tasks').doc(id);
-    const taskDoc = await taskRef.get();
+    // Get the session cookie to forward to RDS API
+    const cookieStore = await cookies();
+    const cookieName = process.env.JWT_AUTH_COOKIE_NAME || 'rds-session';
+    const sessionCookie = cookieStore.get(cookieName)?.value;
 
-    if (!taskDoc.exists) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'No session cookie' }, { status: 401 });
     }
 
     // Parse request body
@@ -30,9 +33,7 @@ export async function PATCH(
     const { title, priority, endsOn } = body;
 
     // Build update object with only provided fields
-    const updateData: Record<string, unknown> = {
-      updatedAt: Math.floor(Date.now() / 1000), // seconds since epoch
-    };
+    const updateData: Record<string, unknown> = {};
 
     if (title !== undefined) {
       updateData.title = title;
@@ -47,8 +48,31 @@ export async function PATCH(
       updateData.endsOn = endsOn;
     }
 
-    // Update the task
-    await taskRef.update(updateData);
+    // Call RDS API to update task
+    const response = await fetch(`${RDS_API_BASE}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `${cookieName}=${sessionCookie}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('RDS API error:', response.status, errorData);
+      
+      if (response.status === 401) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+      }
+      return NextResponse.json(
+        { error: errorData.message || 'Failed to update task' },
+        { status: response.status }
+      );
+    }
 
     // Revalidate the tasks page cache
     revalidatePath('/tasks');

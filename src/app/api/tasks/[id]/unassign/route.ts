@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
-import { db } from '@/lib/firebase-admin';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+
+const RDS_API_BASE = 'https://api.realdevsquad.com';
 
 export async function POST(
   _request: Request,
@@ -17,20 +19,44 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the task to verify it exists
-    const taskRef = db.collection('tasks').doc(id);
-    const taskDoc = await taskRef.get();
+    // Get the session cookie to forward to RDS API
+    const cookieStore = await cookies();
+    const cookieName = process.env.JWT_AUTH_COOKIE_NAME || 'rds-session';
+    const sessionCookie = cookieStore.get(cookieName)?.value;
 
-    if (!taskDoc.exists) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'No session cookie' }, { status: 401 });
     }
 
-    // Update the task: clear assignee and set status to BACKLOG
-    await taskRef.update({
-      assignee: null,
-      status: 'BACKLOG',
-      updatedAt: Math.floor(Date.now() / 1000), // seconds since epoch
+    // Call RDS API to unassign task
+    // Setting assignee to null and status to BACKLOG
+    const response = await fetch(`${RDS_API_BASE}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `${cookieName}=${sessionCookie}`,
+      },
+      body: JSON.stringify({
+        assignee: null,
+        status: 'BACKLOG',
+      }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('RDS API error:', response.status, errorData);
+      
+      if (response.status === 401) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+      }
+      return NextResponse.json(
+        { error: errorData.message || 'Failed to unassign task' },
+        { status: response.status }
+      );
+    }
 
     // Revalidate the tasks page cache
     revalidatePath('/tasks');
