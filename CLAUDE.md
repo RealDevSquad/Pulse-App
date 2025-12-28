@@ -14,8 +14,17 @@ See `docs/API.md` for RDS backend API documentation:
 - Base URL: `https://api.realdevsquad.com`
 - Users, Tasks, Logs, OOO endpoints
 - Authentication and error handling
+- Request/response formats with examples
+- Query parameters for filtering and pagination
 
 Source: [website-api-contracts](https://github.com/RealDevSquad/website-api-contracts)
+
+**Key endpoints used in this app:**
+- `GET /users` - List members with pagination
+- `GET /users/userId/:id` - Get user details
+- `GET /tasks` - List tasks with status/assignee filters
+- `GET /logs` - Activity logs (superuser only)
+- `GET /requests?type=OOO` - Out of office requests
 
 ## Mobile Responsiveness
 
