@@ -134,26 +134,26 @@ export default async function MembersPage({ searchParams }: PageProps) {
               href={`/member/${user.id}`}
               className="flex items-center gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
             >
-              <Avatar className="h-10 w-10">
+              <Avatar className="h-12 w-12">
                 <AvatarImage src={user.picture?.url} alt={user.username} />
-                <AvatarFallback>
+                <AvatarFallback className="text-base">
                   {getInitials(user.first_name, user.last_name, user.username)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">
+                <div className="font-semibold truncate">
                   {user.first_name} {user.last_name}
                 </div>
                 <div className="text-sm text-muted-foreground truncate">
                   @{user.username}
                 </div>
               </div>
-              <div className="flex flex-col gap-1 shrink-0">
-                <Badge variant="outline" className={`text-xs ${discordInfo.className}`}>
+              <div className="flex flex-col gap-1.5 shrink-0">
+                <Badge variant="outline" className={`text-sm ${discordInfo.className}`}>
                   Discord: {discordInfo.label}
                 </Badge>
                 {user.roles?.archived && (
-                  <Badge variant="outline" className={`text-xs ${archivedInfo.className}`}>
+                  <Badge variant="outline" className={`text-sm ${archivedInfo.className}`}>
                     Archived
                   </Badge>
                 )}

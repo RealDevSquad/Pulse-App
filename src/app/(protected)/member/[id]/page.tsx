@@ -641,29 +641,29 @@ export default async function MemberPage({ params }: PageProps) {
             Productivity (Last 30 Days)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
-            <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold text-blue-600">{logsActivity.tasksAssigned}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Tasks Assigned</p>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold text-blue-600">{logsActivity.tasksAssigned}</p>
+              <p className="text-sm text-muted-foreground">Assigned</p>
             </div>
-            <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold text-emerald-600">{logsActivity.tasksStarted}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Tasks Started</p>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold text-emerald-600">{logsActivity.tasksStarted}</p>
+              <p className="text-sm text-muted-foreground">Started</p>
             </div>
-            <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold text-emerald-600">{logsActivity.tasksCompleted}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Tasks Completed</p>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold text-emerald-600">{logsActivity.tasksCompleted}</p>
+              <p className="text-sm text-muted-foreground">Completed</p>
             </div>
-            <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold">{logsActivity.taskUpdates}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Task Updates</p>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-2xl font-bold">{logsActivity.taskUpdates}</p>
+              <p className="text-sm text-muted-foreground">Updates</p>
             </div>
-            <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
-              <p className={`text-xl sm:text-2xl font-bold ${logsActivity.extensionRequests > 0 ? 'text-red-600' : ''}`}>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className={`text-2xl font-bold ${logsActivity.extensionRequests > 0 ? 'text-red-600' : ''}`}>
                 {logsActivity.extensionRequests}
               </p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">Extensions</p>
+              <p className="text-sm text-muted-foreground">Extensions</p>
             </div>
           </div>
           {logsActivity.extensionRequests > 2 && (
@@ -682,13 +682,13 @@ export default async function MemberPage({ params }: PageProps) {
 
       {/* Activity Calendar */}
       <Card>
-        <CardHeader className="p-2 sm:p-6">
+        <CardHeader className="p-3 sm:p-6">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
             Activity History
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
           <ActivityCalendar data={activityData} showFilters />
         </CardContent>
       </Card>
@@ -696,27 +696,27 @@ export default async function MemberPage({ params }: PageProps) {
       {/* Active Tasks */}
       {userTasks.length > 0 && (
         <Card>
-          <CardHeader className="p-2 sm:p-6">
+          <CardHeader className="p-3 sm:p-6">
             <CardTitle className="text-base sm:text-lg">Active Tasks ({userTasks.length})</CardTitle>
           </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <div className="space-y-2 sm:space-y-3">
               {userTasks.map((task) => (
-                <div key={task.id} className="flex items-start justify-between gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg border">
+                <div key={task.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium line-clamp-1 text-sm sm:text-base">{task.title}</div>
+                    <div className="font-semibold line-clamp-1">{task.title}</div>
                     {task.github?.issue?.html_url && (
                       <a
                         href={task.github.issue.html_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-sm text-blue-600 hover:underline"
                       >
                         View on GitHub
                       </a>
                     )}
                   </div>
-                  <Badge variant="outline" className="shrink-0 text-[10px] sm:text-xs">
+                  <Badge variant="outline" className="shrink-0 text-sm">
                     {task.status?.replace('_', ' ')}
                   </Badge>
                 </div>
@@ -729,17 +729,17 @@ export default async function MemberPage({ params }: PageProps) {
       {/* Member Info (Collapsible) - Root only */}
       {isRoot && (
         <details className="group">
-          <summary className="flex items-center justify-between cursor-pointer list-none p-2 sm:p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-            <span className="font-semibold text-sm sm:text-base">Member Info & Contact</span>
-            <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground transition-transform group-open:rotate-180" />
+          <summary className="flex items-center justify-between cursor-pointer list-none p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+            <span className="font-semibold">Member Info & Contact</span>
+            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
-          <div className="mt-2 sm:mt-4 grid gap-2 sm:gap-6 md:grid-cols-2">
+          <div className="mt-3 sm:mt-4 grid gap-3 sm:gap-6 md:grid-cols-2">
             {/* Contact & Social */}
             <Card>
-              <CardHeader className="p-2 sm:p-6">
+              <CardHeader className="p-3 sm:p-6">
                 <CardTitle className="text-base sm:text-lg">Contact & Social</CardTitle>
               </CardHeader>
-              <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0 space-y-2 sm:space-y-3">
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 space-y-3">
                 {user.github_id && (
                   <a
                     href={`https://github.com/${user.github_id}`}
@@ -807,28 +807,28 @@ export default async function MemberPage({ params }: PageProps) {
 
             {/* Stats */}
             <Card>
-              <CardHeader className="p-2 sm:p-6">
+              <CardHeader className="p-3 sm:p-6">
                 <CardTitle className="text-base sm:text-lg">Details</CardTitle>
               </CardHeader>
-              <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0 space-y-2 sm:space-y-3">
-                <div className="flex justify-between">
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 space-y-3">
+                <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Active Tasks</span>
                   <span className="font-medium">{userTasks.length}</span>
                 </div>
                 {user.yoe && user.yoe !== '0' && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Years of Experience</span>
                     <span className="font-medium">{user.yoe}</span>
                   </div>
                 )}
                 {user.created_at && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Joined RDS</span>
                     <span className="font-medium">{formatDate(user.created_at)}</span>
                   </div>
                 )}
                 {user.discordJoinedAt && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Joined Discord</span>
                     <span className="font-medium">{formatDate(new Date(user.discordJoinedAt).getTime())}</span>
                   </div>

@@ -284,24 +284,24 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
               <ActivityHeatmap dailyActivity={orgHealth.dailyActivity} />
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4 pt-4 border-t">
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold">{orgHealth.uniqueActiveUsers}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Active Contributors</p>
+                  <p className="text-2xl font-bold">{orgHealth.uniqueActiveUsers}</p>
+                  <p className="text-sm text-muted-foreground">Contributors</p>
                 </div>
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold">{orgHealth.taskStatusUpdates}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Task Updates</p>
+                  <p className="text-2xl font-bold">{orgHealth.taskStatusUpdates}</p>
+                  <p className="text-sm text-muted-foreground">Updates</p>
                 </div>
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold">{orgHealth.approvalRate}%</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Approval Rate</p>
+                  <p className="text-2xl font-bold">{orgHealth.approvalRate}%</p>
+                  <p className="text-sm text-muted-foreground">Approval</p>
                 </div>
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold">{orgHealth.extensionRequests}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Extension Requests</p>
+                  <p className="text-2xl font-bold">{orgHealth.extensionRequests}</p>
+                  <p className="text-sm text-muted-foreground">Extensions</p>
                 </div>
               </div>
             </CardContent>

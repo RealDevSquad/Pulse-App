@@ -149,14 +149,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
               return { text, isOverdue: isOver };
             })();
             return (
-              <div key={task.id} className="p-4 rounded-lg border space-y-2">
-                <div className="flex items-start justify-between gap-2">
+              <div key={task.id} className="p-4 rounded-lg border space-y-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <a
                       href={`https://status.realdevsquad.com/tasks/${task.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium line-clamp-2 hover:underline text-sm"
+                      className="font-semibold line-clamp-2 hover:underline"
                     >
                       {task.title}
                     </a>
@@ -169,21 +169,21 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 <div className="flex items-center justify-between gap-2">
                   {task.assigneeUser ? (
                     <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                      <Avatar className="h-5 w-5">
+                      <Avatar className="h-6 w-6">
                         <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
-                        <AvatarFallback className="text-[10px]">
+                        <AvatarFallback className="text-xs">
                           {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs hover:underline">
+                      <span className="text-sm text-muted-foreground hover:underline">
                         {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                       </span>
                     </Link>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Unassigned</span>
+                    <span className="text-sm text-muted-foreground">Unassigned</span>
                   )}
                   <span className={cn(
-                    'text-xs font-medium px-2 py-0.5 rounded-full',
+                    'text-sm font-medium px-2.5 py-0.5 rounded-full',
                     isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
                   )}>
                     {dueText}
@@ -191,7 +191,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-muted-foreground">Updated {updatedTime}</span>
+                  <span className="text-sm text-muted-foreground/70">Updated {updatedTime}</span>
                   {isRoot && (
                     <TaskActionsMenu
                       taskId={task.id}
@@ -343,19 +343,19 @@ export default async function TasksPage({ searchParams }: PageProps) {
             return { text, isOverdue };
           })();
           return (
-            <div key={task.id} className="p-4 rounded-lg border space-y-2">
-              <div className="flex items-start justify-between gap-2">
+            <div key={task.id} className="p-4 rounded-lg border space-y-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <a
                     href={`https://status.realdevsquad.com/tasks/${task.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium line-clamp-2 hover:underline text-sm"
+                    className="font-semibold line-clamp-2 hover:underline"
                   >
                     {task.title}
                   </a>
                 </div>
-                <span className={cn(statusInfo.className, 'text-xs')}>
+                <span className={statusInfo.className}>
                   {statusInfo.label}
                 </span>
               </div>
@@ -363,22 +363,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <div className="flex items-center justify-between gap-2">
                 {task.assigneeUser ? (
                   <Link href={`/member/${task.assignee}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                    <Avatar className="h-5 w-5">
+                    <Avatar className="h-6 w-6">
                       <AvatarImage src={task.assigneeUser.picture?.url} alt={task.assigneeUser.username} />
-                      <AvatarFallback className="text-[10px]">
+                      <AvatarFallback className="text-xs">
                         {getInitials(task.assigneeUser.first_name, task.assigneeUser.last_name, task.assigneeUser.username)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-xs hover:underline">
+                    <span className="text-sm text-muted-foreground hover:underline">
                       {task.assigneeUser.first_name} {task.assigneeUser.last_name}
                     </span>
                   </Link>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Unassigned</span>
+                  <span className="text-sm text-muted-foreground">Unassigned</span>
                 )}
                 {dueInfo && (
                   <span className={cn(
-                    'text-xs font-medium px-2 py-0.5 rounded-full',
+                    'text-sm font-medium px-2.5 py-0.5 rounded-full',
                     dueInfo.isOverdue ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-muted text-muted-foreground'
                   )}>
                     {dueInfo.text}
@@ -387,16 +387,16 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </div>
 
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-muted-foreground">Updated {updatedTime}</span>
+                <span className="text-sm text-muted-foreground/70">Updated {updatedTime}</span>
                 <div className="flex items-center gap-2">
                   {task.github?.issue?.html_url && (
                     <a
                       href={task.github.issue.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] text-blue-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
                     >
-                      <ExternalLink className="h-3 w-3" />
+                      <ExternalLink className="h-3.5 w-3.5" />
                       GitHub
                     </a>
                   )}
