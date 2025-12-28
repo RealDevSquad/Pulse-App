@@ -8,6 +8,15 @@ See `docs/DESIGN.md` for:
 - Color palette and status indicators
 - Chart guidelines
 
+## API Reference
+
+See `docs/API.md` for RDS backend API documentation:
+- Base URL: `https://api.realdevsquad.com`
+- Users, Tasks, Logs, OOO endpoints
+- Authentication and error handling
+
+Source: [website-api-contracts](https://github.com/RealDevSquad/website-api-contracts)
+
 ## Mobile Responsiveness
 
 All features MUST be mobile responsive. Follow these breakpoints:
