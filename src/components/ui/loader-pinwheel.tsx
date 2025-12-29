@@ -37,11 +37,20 @@ const LoaderPinwheelIcon = forwardRef<
 
   // Auto-animate when isAnimating prop is true
   useEffect(() => {
-    if (isAnimating) {
-      controls.start('animate');
-    } else {
-      controls.start('normal');
+    let isMounted = true;
+    
+    if (isMounted) {
+      if (isAnimating) {
+        controls.start('animate');
+      } else {
+        controls.start('normal');
+      }
     }
+    
+    return () => {
+      isMounted = false;
+      controls.stop();
+    };
   }, [isAnimating, controls]);
 
   return (

@@ -39,6 +39,10 @@ const FolderOpenIcon = forwardRef<FolderOpenIconHandle, FolderOpenIconProps>(
       if (animateOnMount) {
         controls.start('animate');
       }
+      
+      return () => {
+        controls.stop();
+      };
     }, [animateOnMount, controls]);
 
     return (
