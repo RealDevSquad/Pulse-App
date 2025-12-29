@@ -27,8 +27,9 @@ import {
 } from '@/components/ui/sidebar';
 import { NavItemMotion, FadeIn } from '@/components/ui/motion';
 
-const navItems = [
-  { title: 'Me', url: '/me', icon: User },
+// Note: 'Me' URL is dynamically set based on userId to avoid redirect issues with AnimatePresence
+const getNavItems = (userId?: string) => [
+  { title: 'Me', url: userId ? `/member/${userId}` : '/me', icon: User },
   { title: 'RDS', url: '/rds', icon: Building2 },
   { title: 'OOO', url: '/ooo', icon: Calendar },
   { title: 'Tasks', url: '/tasks', icon: CheckSquare },
@@ -50,11 +51,14 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   
+  // Get nav items with dynamic 'Me' URL to avoid redirect issues with AnimatePresence
+  const navItems = getNavItems(userId);
+  
   // Check if a nav item should be marked as active
   const isActive = (url: string): boolean => {
-    if (url === '/me') {
-      // "Me" is active on /me or /member/{currentUserId}
-      return pathname === '/me' || (!!userId && pathname === `/member/${userId}`);
+    // "Me" is active on /me or /member/{currentUserId}
+    if (userId && (url === `/member/${userId}` || url === '/me')) {
+      return pathname === '/me' || pathname === `/member/${userId}`;
     }
     return pathname === url || pathname.startsWith(`${url}/`);
   };
@@ -120,7 +124,7 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
         {username && (
           <div className="px-3 py-2">
             <Link 
-              href="/me" 
+              href={userId ? `/member/${userId}` : '/me'}
               onClick={handleNavClick}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
             >
