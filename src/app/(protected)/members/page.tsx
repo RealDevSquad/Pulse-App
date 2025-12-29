@@ -173,9 +173,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
                   </div>
                 </div>
                 {isRoot && (
-                  <div onClick={(e) => e.preventDefault()}>
-                    <UserInfoPopover userId={user.id} />
-                  </div>
+                  <UserInfoPopover userId={user.id} />
                 )}
               </div>
 
