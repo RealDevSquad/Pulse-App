@@ -26,7 +26,12 @@ interface DayActivityData {
   ooo_entries: ActivityEntry[];
 }
 
-async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
+interface UserActivityResult {
+  activityData: ActivityDay[];
+  extendedEndDate: Date | undefined;
+}
+
+async function getUserActivityData(userId: string): Promise<UserActivityResult> {
   // Fetch 2 years of data to support year navigation
   const twoYearsAgo = Date.now() - 2 * 365 * 24 * 60 * 60 * 1000;
   const twoYearsAgoDate = new Date(twoYearsAgo);
@@ -332,15 +337,23 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
   }
 
   // Process OOO from cache (already aggregated from both requests and usersStatus)
+  // Include future OOO dates (up to 1 week after the latest OOO end date)
+  let latestOOOEnd = Date.now();
+  
   for (const entry of oooEntries) {
     if (entry.status === 'APPROVED' || entry.status === 'ACTIVE') {
       const from = entry.from;
       const until = entry.until;
       
       if (from && until) {
-        // Mark each day in the OOO range with reason
+        // Track the latest OOO end date for calendar extension
+        if (until > latestOOOEnd) {
+          latestOOOEnd = until;
+        }
+        
+        // Mark each day in the OOO range with reason (including future dates)
         let current = Math.max(from, twoYearsAgo);
-        const end = Math.min(until, Date.now());
+        const end = until; // Don't cap at Date.now() - include future OOO
         
         // Format date range for subtitle
         const fromDate = new Date(from).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -363,6 +376,11 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
       }
     }
   }
+  
+  // Calculate extended end date: 1 week after the latest OOO end date
+  const extendedEndDate = latestOOOEnd > Date.now() 
+    ? new Date(latestOOOEnd + 7 * 24 * 60 * 60 * 1000) // 1 week after OOO ends
+    : undefined;
 
   // Convert to ActivityDay array
   const result: ActivityDay[] = [];
@@ -445,15 +463,15 @@ async function getUserActivityData(userId: string): Promise<ActivityDay[]> {
     });
   }
 
-  return result;
+  return { activityData: result, extendedEndDate };
 }
 
 /**
  * Cached version of getUserActivityData - 5 min cache per user
  */
-function getCachedUserActivityData(userId: string): Promise<ActivityDay[]> {
+function getCachedUserActivityData(userId: string): Promise<UserActivityResult> {
   const cachedFn = unstable_cache(
-    async (): Promise<ActivityDay[]> => {
+    async (): Promise<UserActivityResult> => {
       console.log(`[Cache] Fetching activity data for user ${userId}...`);
       return getUserActivityData(userId);
     },
@@ -574,11 +592,13 @@ export default async function MemberPage({ params }: PageProps) {
   const statusBadge = getStatusBadge(user.status);
 
   // Fetch user's tasks (fresh) and activity data from cache
-  const [userTasks, activityData, logsActivity] = await Promise.all([
+  const [userTasks, activityResult, logsActivity] = await Promise.all([
     getFreshUserTasks(id),
     getCachedUserActivityData(id),
     getUserActivityFromLogs(id),
   ]);
+  
+  const { activityData, extendedEndDate } = activityResult;
 
   return (
     <div className="space-y-3 sm:space-y-6">
@@ -689,7 +709,7 @@ export default async function MemberPage({ params }: PageProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-          <ActivityCalendar data={activityData} showFilters />
+          <ActivityCalendar data={activityData} showFilters extendedEndDate={extendedEndDate} />
         </CardContent>
       </Card>
 

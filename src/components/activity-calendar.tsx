@@ -33,6 +33,8 @@ interface ActivityCalendarProps {
   filter?: ActivityFilter;
   onFilterChange?: (filter: ActivityFilter) => void;
   showFilters?: boolean;
+  /** Extend calendar to show future dates (e.g., for future OOO) */
+  extendedEndDate?: Date;
 }
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -543,7 +545,7 @@ function MobileCalendar({ activityMap, onDayClick, selectedDate }: MobileCalenda
   );
 }
 
-export function ActivityCalendar({ data, className = '', filter: externalFilter, onFilterChange, showFilters = false }: ActivityCalendarProps) {
+export function ActivityCalendar({ data, className = '', filter: externalFilter, onFilterChange, showFilters = false, extendedEndDate }: ActivityCalendarProps) {
   const isMobile = useIsMobile();
   const [hoveredDay, setHoveredDay] = useState<SelectedDay | null>(null);
   const [pinnedDay, setPinnedDay] = useState<SelectedDay | null>(null);
@@ -599,17 +601,20 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
     return map;
   }, [data, filter]);
 
-  // Generate 365 days for the selected year
+  // Generate 365 days for the selected year (plus extended future dates if provided)
   const { weeks, monthLabels, yearLabel, canGoNext } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // End date is today minus yearOffset years
+    // End date is today minus yearOffset years, or extendedEndDate if in the future
     const endDate = new Date(today);
     endDate.setFullYear(endDate.getFullYear() + yearOffset);
     
-    // Don't allow going into the future
-    if (endDate > today) {
+    // Allow going into the future if extendedEndDate is provided and we're viewing current year
+    if (yearOffset === 0 && extendedEndDate && extendedEndDate > endDate) {
+      endDate.setTime(extendedEndDate.getTime());
+    } else if (endDate > today && !extendedEndDate) {
+      // Don't allow going into the future unless extended
       endDate.setTime(today.getTime());
     }
     
@@ -617,11 +622,11 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 364 - startDate.getDay());
     
-    const weeksArray: { date: Date; dateStr: string }[][] = [];
+    const weeksArray: { date: Date; dateStr: string; isFuture: boolean }[][] = [];
     const labels: { month: string; weekIndex: number }[] = [];
     
     let currentDate = new Date(startDate);
-    let currentWeek: { date: Date; dateStr: string }[] = [];
+    let currentWeek: { date: Date; dateStr: string; isFuture: boolean }[] = [];
     let lastMonth = -1;
     
     while (currentDate <= endDate) {
@@ -640,7 +645,8 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
       }
       
       const dateStr = currentDate.toISOString().split('T')[0];
-      currentWeek.push({ date: new Date(currentDate), dateStr });
+      const isFuture = currentDate > today;
+      currentWeek.push({ date: new Date(currentDate), dateStr, isFuture });
       
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -654,13 +660,16 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
     const endYear = endDate.getFullYear();
     const label = startYear === endYear ? `${endYear}` : `${startYear}-${endYear}`;
     
+    // Can go next if viewing past year, or if extended end date would be even further
+    const canGoNextYear = yearOffset < 0;
+    
     return { 
       weeks: weeksArray, 
       monthLabels: labels, 
       yearLabel: label,
-      canGoNext: yearOffset < 0 
+      canGoNext: canGoNextYear 
     };
-  }, [yearOffset]);
+  }, [yearOffset, extendedEndDate]);
 
   const getDayData = (dateStr: string): SelectedDay => {
     const activity = activityMap.get(dateStr);
@@ -871,6 +880,7 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
                     const count = activity?.count || 0;
                     const isSelected = activeDay?.date === day.dateStr;
                     const activities = activity?.activities || [];
+                    const isFuture = day.isFuture;
                     
                     const styleInfo: DayStyleInfo = {
                       isOOO: activities.some(a => a.type === 'ooo'),
@@ -896,14 +906,17 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
                       cellContent = <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400">R</span>;
                     }
                     
+                    // Future dates without activity get a subtle dashed border
+                    const futureEmptyStyle = isFuture && count === 0 ? 'border border-dashed border-muted-foreground/30' : '';
+                    
                     return (
                       <button
                         key={day.dateStr}
                         onClick={() => handleDayClick(day.dateStr)}
                         onMouseEnter={() => handleDayHover(day.dateStr)}
                         onMouseLeave={handleDayLeave}
-                        className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${buildDayStyle(count, isSelected, styleInfo)}`}
-                        title={`${formatShortDate(day.dateStr)}: ${count} activities`}
+                        className={`w-3 h-3 rounded-sm transition-all hover:ring-1 hover:ring-foreground flex items-center justify-center ${buildDayStyle(count, isSelected, styleInfo)} ${futureEmptyStyle}`}
+                        title={`${formatShortDate(day.dateStr)}${isFuture ? ' (upcoming)' : ''}: ${count} activities`}
                       >
                         {cellContent}
                       </button>
