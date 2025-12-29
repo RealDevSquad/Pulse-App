@@ -1,7 +1,6 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Separator } from '@/components/ui/separator';
-import { PageTransition } from '@/components/page-transition';
 import { getSession } from '@/lib/auth';
 import { checkDashboardAccess } from '@/lib/users';
 import { AccessDenied } from '@/components/access-denied';
@@ -29,7 +28,7 @@ export default async function ProtectedLayout({
           <span className="text-sm font-medium text-muted-foreground">Dashboard</span>
         </header>
         <main className="flex-1 p-2 sm:p-4 md:p-6">
-          <PageTransition>{children}</PageTransition>
+          {children}
         </main>
       </SidebarInset>
     </SidebarProvider>
