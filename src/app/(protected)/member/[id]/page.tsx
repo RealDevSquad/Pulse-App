@@ -702,25 +702,26 @@ export default async function MemberPage({ params }: PageProps) {
           <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             <div className="space-y-3">
               {userTasks.map((task) => (
-                <div key={task.id} className="p-3 sm:p-4 rounded-lg border bg-muted/30 space-y-2">
+                <a
+                  key={task.id}
+                  href={`https://status.realdevsquad.com/tasks/${task.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block p-3 sm:p-4 rounded-lg border bg-muted/30 space-y-2 hover:bg-muted/50 transition-colors"
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="font-semibold text-foreground line-clamp-2 flex-1 min-w-0">{task.title}</div>
+                    <div className="font-semibold text-foreground line-clamp-2 flex-1 min-w-0 hover:text-primary transition-colors">{task.title}</div>
                     <Badge variant="outline" className="shrink-0 text-xs">
                       {task.status?.replace('_', ' ')}
                     </Badge>
                   </div>
                   {task.github?.issue?.html_url && (
-                    <a
-                      href={task.github.issue.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
-                    >
+                    <span className="inline-flex items-center gap-1 text-sm text-blue-600">
                       <Github className="h-3.5 w-3.5" />
                       View on GitHub
-                    </a>
+                    </span>
                   )}
-                </div>
+                </a>
               ))}
             </div>
           </CardContent>
