@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -47,6 +47,11 @@ export function TodosFilterBar({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [searchValue, setSearchValue] = useState(search);
+
+  // Sync local state when prop changes (e.g., when navigating back/forward)
+  useEffect(() => {
+    setSearchValue(search);
+  }, [search]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
