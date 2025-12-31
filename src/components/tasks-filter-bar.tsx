@@ -1,6 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTransition, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -18,6 +20,7 @@ interface FilterState {
 
 interface TasksFilterBarProps {
   filters: FilterState;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -39,16 +42,31 @@ const statusOptions: { value: TaskStatusFilter; label: string }[] = [
   { value: 'backlog', label: 'Backlog' },
 ];
 
-export function TasksFilterBar({ filters }: TasksFilterBarProps) {
+export function TasksFilterBar({ filters, onLoadingChange }: TasksFilterBarProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [optimisticFilter, setOptimisticFilter] = useState(filters.statusFilter);
 
   const handleStatusChange = (value: TaskStatusFilter) => {
-    router.push(buildUrl(filters, { statusFilter: value }));
+    // Update UI immediately
+    setOptimisticFilter(value);
+    onLoadingChange?.(true);
+    
+    // Navigate with transition
+    startTransition(() => {
+      router.push(buildUrl(filters, { statusFilter: value }));
+    });
   };
 
+  // Sync optimistic state when filters change (navigation complete)
+  if (!isPending && optimisticFilter !== filters.statusFilter) {
+    setOptimisticFilter(filters.statusFilter);
+    onLoadingChange?.(false);
+  }
+
   return (
-    <div className="flex items-center">
-      <Select value={filters.statusFilter} onValueChange={handleStatusChange}>
+    <div className="flex items-center gap-2">
+      <Select value={optimisticFilter} onValueChange={handleStatusChange}>
         <SelectTrigger 
           className="w-[140px] h-10 bg-background hover:bg-accent/50 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-1"
           aria-label="Filter by status"
@@ -67,6 +85,9 @@ export function TasksFilterBar({ filters }: TasksFilterBarProps) {
           ))}
         </SelectContent>
       </Select>
+      {isPending && (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      )}
     </div>
   );
 }

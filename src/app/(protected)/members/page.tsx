@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserInfoPopover } from '@/components/user-info-popover';
 import { MembersFilterBar } from '@/components/members-filter-bar';
+import { MembersSearch } from '@/components/members-search';
 import { MembersTable } from '@/components/members-table';
 import Link from 'next/link';
 
@@ -19,6 +20,7 @@ interface PageProps {
     inDiscord?: string;
     archived?: string;
     hideSuperusers?: string;
+    search?: string;
   }>;
 }
 
@@ -40,6 +42,7 @@ interface FilterState {
   inDiscord: boolean;
   archived: boolean;
   hideSuperusers: boolean;
+  search: string;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page: number }> = {}) {
@@ -50,6 +53,11 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
   params.set('archived', String(overrides.archived ?? filters.archived));
   params.set('hideSuperusers', String(overrides.hideSuperusers ?? filters.hideSuperusers));
   params.set('page', String(overrides.page ?? 1));
+  // Preserve search param
+  const searchVal = overrides.search ?? filters.search;
+  if (searchVal) {
+    params.set('search', searchVal);
+  }
   return `/members?${params.toString()}`;
 }
 
@@ -105,8 +113,9 @@ export default async function MembersPage({ searchParams }: PageProps) {
   const inDiscord = params.inDiscord !== 'false';
   const archived = params.archived === 'true';
   const hideSuperusers = params.hideSuperusers !== 'false';
+  const search = params.search || '';
 
-  const filters: FilterState = { sortBy, sortOrder, inDiscord, archived, hideSuperusers };
+  const filters: FilterState = { sortBy, sortOrder, inDiscord, archived, hideSuperusers, search };
 
   const { users, total, hasMore } = await getCachedUsers({
     limit: ITEMS_PER_PAGE,
@@ -116,20 +125,27 @@ export default async function MembersPage({ searchParams }: PageProps) {
     inDiscord,
     archived,
     hideSuperusers,
+    search,
   });
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-3 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Members</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          {total} members found
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Members</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {total} members found{search && ` for "${search}"`}
+          </p>
+        </div>
+        {/* Desktop search - hidden on mobile */}
+        <div className="hidden sm:block">
+          <MembersSearch />
+        </div>
       </div>
 
-      {/* Filter Bar */}
+      {/* Filter Bar with mobile search */}
       <MembersFilterBar filters={filters} />
 
       {/* Desktop Table (Resizable) */}
@@ -220,9 +236,9 @@ export default async function MembersPage({ searchParams }: PageProps) {
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - sticky at bottom */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="sticky bottom-0 flex items-center justify-between gap-4 py-4 border-t bg-background">
           <p className="text-sm text-muted-foreground shrink-0">
             Page {page} of {totalPages}
           </p>

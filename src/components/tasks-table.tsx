@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { TableRowMotion } from '@/components/ui/motion';
 import { TaskActionsMenu } from '@/components/task-actions-menu';
+import { SkeletonPulse } from '@/components/ui/skeleton';
 import { getStatusBadgeStyle, formatRelativeTime, formatDueDate, getTaskTypeInfo, getPriorityInfo } from '@/lib/utils';
 import type { TaskWithAssignee, TaskSortField, SortOrder, TaskStatusFilter } from '@/lib/tasks-cache';
 
@@ -236,9 +237,12 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       cell: ({ row }) => {
         const info = getStatusBadgeStyle(row.original.status);
         return (
-          <span className={info.className}>
+          <Link 
+            href={`/task/${row.original.id}`}
+            className={info.className}
+          >
             {info.label}
-          </span>
+          </Link>
         );
       },
     },
@@ -267,7 +271,8 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       header: () => <SortableHeader label="Updated" sortKey="updatedAt" filters={filters} />,
       size: 100,
       cell: ({ row }) => {
-        const time = formatRelativeTime(row.original.updatedAt || row.original.updated_at);
+        // Use latestActivityAt which includes progress updates, fallback to updatedAt
+        const time = formatRelativeTime(row.original.latestActivityAt || row.original.updatedAt || row.original.updated_at);
         const taskId = row.original.id;
         return (
           <a
@@ -352,6 +357,81 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       },
     }] : []),
   ];
+}
+
+/** Skeleton loading state for the tasks table */
+export function TasksTableSkeleton({ rows = 10 }: { rows?: number }) {
+  return (
+    <div className="rounded-xl border bg-card shadow-sm overflow-auto">
+      <Table style={{ width: '100%' }}>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-b-0">
+            {['Title', 'Assignee', 'Type', 'Priority', 'Status', 'Due Date', 'Updated', 'Progress', 'Created', '', ''].map((header, i) => (
+              <TableHead
+                key={i}
+                className="relative group h-12 px-4 bg-muted/30 first:rounded-tl-xl last:rounded-tr-xl"
+              >
+                {header && <span className="text-muted-foreground font-medium">{header}</span>}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }).map((_, rowIndex) => (
+            <TableRow key={rowIndex} className="border-b border-border/50">
+              {/* Title */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-5 w-48" />
+              </TableCell>
+              {/* Assignee */}
+              <TableCell className="px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <SkeletonPulse className="h-7 w-7 rounded-full" />
+                  <SkeletonPulse className="h-4 w-24" />
+                </div>
+              </TableCell>
+              {/* Type */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-4" />
+              </TableCell>
+              {/* Priority */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-6" />
+              </TableCell>
+              {/* Status */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-6 w-16 rounded-full" />
+              </TableCell>
+              {/* Due Date */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-16" />
+              </TableCell>
+              {/* Updated */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-12" />
+              </TableCell>
+              {/* Progress */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-1.5 w-16 rounded-full" />
+              </TableCell>
+              {/* Created */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-12" />
+              </TableCell>
+              {/* GitHub */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-4 w-4" />
+              </TableCell>
+              {/* Actions */}
+              <TableCell className="px-4 py-3">
+                <SkeletonPulse className="h-8 w-8 rounded-md" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }
 
 export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) {

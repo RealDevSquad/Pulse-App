@@ -14,7 +14,7 @@ const pageVariants = {
   exit: { opacity: 0, y: -20 },
 };
 
-export function PageTransition({ children }: { children: React.ReactNode }) {
+export function PageTransition({ children, className }: { children: React.ReactNode; className?: string }) {
   const pathname = usePathname();
   const { duration, easeOut, prefersReducedMotion } = useMotionConfig();
 
@@ -22,13 +22,14 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
+        className={className}
         initial="initial"
         animate="enter"
         exit="exit"
         variants={pageVariants}
-        transition={{ 
-          duration: prefersReducedMotion ? 0 : duration.normal, 
-          ease: easeOut 
+        transition={{
+          duration: prefersReducedMotion ? 0 : duration.normal,
+          ease: easeOut
         }}
       >
         {children}

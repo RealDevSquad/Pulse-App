@@ -16,30 +16,31 @@ export interface StatusInfo {
   type: StatusType;
   textClass: string;
   badgeClass: string;
+  hoverClass: string;
 }
 
 const STATUS_MAP: Record<string, StatusInfo> = {
   // Done statuses (green)
-  COMPLETED: { label: 'Done[C]', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600' },
-  DONE: { label: 'Done', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600' },
-  MERGED: { label: 'Merged', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600' },
+  COMPLETED: { label: 'Done[C]', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600', hoverClass: 'hover:bg-green-500 hover:text-white' },
+  DONE: { label: 'Done', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600', hoverClass: 'hover:bg-green-500 hover:text-white' },
+  MERGED: { label: 'Merged', type: 'done', textClass: 'text-green-600', badgeClass: 'border-green-500 text-green-600', hoverClass: 'hover:bg-green-500 hover:text-white' },
   
   // Active statuses
-  IN_PROGRESS: { label: 'In Progress', type: 'active', textClass: 'text-blue-600', badgeClass: 'border-blue-500 text-blue-600' },
-  ASSIGNED: { label: 'Assigned', type: 'active', textClass: 'text-purple-600', badgeClass: 'border-purple-500 text-purple-600' },
-  VERIFIED: { label: 'Verified', type: 'active', textClass: 'text-blue-600', badgeClass: 'border-blue-500 text-blue-600' },
+  IN_PROGRESS: { label: 'In Progress', type: 'active', textClass: 'text-blue-600', badgeClass: 'border-blue-500 text-blue-600', hoverClass: 'hover:bg-blue-500 hover:text-white' },
+  ASSIGNED: { label: 'Assigned', type: 'active', textClass: 'text-purple-600', badgeClass: 'border-purple-500 text-purple-600', hoverClass: 'hover:bg-purple-500 hover:text-white' },
+  VERIFIED: { label: 'Verified', type: 'active', textClass: 'text-blue-600', badgeClass: 'border-blue-500 text-blue-600', hoverClass: 'hover:bg-blue-500 hover:text-white' },
   
   // Review statuses (yellow)
-  NEEDS_REVIEW: { label: 'Needs Review', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600' },
-  IN_REVIEW: { label: 'In Review', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600' },
-  SANITY_CHECK: { label: 'Sanity Check', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600' },
+  NEEDS_REVIEW: { label: 'Needs Review', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600', hoverClass: 'hover:bg-yellow-500 hover:text-white' },
+  IN_REVIEW: { label: 'In Review', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600', hoverClass: 'hover:bg-yellow-500 hover:text-white' },
+  SANITY_CHECK: { label: 'Sanity Check', type: 'review', textClass: 'text-yellow-600', badgeClass: 'border-yellow-500 text-yellow-600', hoverClass: 'hover:bg-yellow-500 hover:text-white' },
   
   // Blocked status (red)
-  BLOCKED: { label: 'Blocked', type: 'blocked', textClass: 'text-red-600', badgeClass: 'border-red-500 text-red-600' },
+  BLOCKED: { label: 'Blocked', type: 'blocked', textClass: 'text-red-600', badgeClass: 'border-red-500 text-red-600', hoverClass: 'hover:bg-red-500 hover:text-white' },
   
   // Backlog statuses (gray)
-  BACKLOG: { label: 'Backlog', type: 'backlog', textClass: 'text-gray-500', badgeClass: 'border-gray-400 text-gray-500' },
-  TODO: { label: 'Todo', type: 'backlog', textClass: 'text-gray-500', badgeClass: 'border-gray-400 text-gray-500' },
+  BACKLOG: { label: 'Backlog', type: 'backlog', textClass: 'text-gray-500', badgeClass: 'border-gray-400 text-gray-500', hoverClass: 'hover:bg-gray-400 hover:text-white' },
+  TODO: { label: 'Todo', type: 'backlog', textClass: 'text-gray-500', badgeClass: 'border-gray-400 text-gray-500', hoverClass: 'hover:bg-gray-400 hover:text-white' },
 };
 
 const UNKNOWN_STATUS: StatusInfo = {
@@ -47,6 +48,7 @@ const UNKNOWN_STATUS: StatusInfo = {
   type: 'unknown',
   textClass: 'text-gray-500',
   badgeClass: 'border-gray-400 text-gray-500',
+  hoverClass: 'hover:bg-gray-400 hover:text-white',
 };
 
 /**
@@ -74,10 +76,10 @@ export function getStatusStyle(status?: string): { label: string; className: str
  */
 export function getStatusBadgeStyle(status?: string): { label: string; className: string } {
   const info = getStatusInfo(status);
-  const baseClass = 'inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium';
+  const baseClass = 'inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium transition-colors';
   return {
     label: info.label,
-    className: `${baseClass} ${info.badgeClass}`,
+    className: `${baseClass} ${info.badgeClass} ${info.hoverClass}`,
   };
 }
 

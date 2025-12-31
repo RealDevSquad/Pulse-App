@@ -24,12 +24,7 @@ interface FilterState {
   inDiscord: boolean;
   archived: boolean;
   hideSuperusers: boolean;
-}
-
-interface MembersTableProps {
-  users: UserWithActivity[];
-  filters: FilterState;
-  isRoot?: boolean;
+  search: string;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -40,7 +35,18 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
   params.set('archived', String(overrides.archived ?? filters.archived));
   params.set('hideSuperusers', String(overrides.hideSuperusers ?? filters.hideSuperusers));
   params.set('page', '1');
+  // Preserve search param
+  const searchVal = overrides.search ?? filters.search;
+  if (searchVal) {
+    params.set('search', searchVal);
+  }
   return `/members?${params.toString()}`;
+}
+
+interface MembersTableProps {
+  users: UserWithActivity[];
+  filters: FilterState;
+  isRoot?: boolean;
 }
 
 function getInitials(firstName?: string, lastName?: string, username?: string): string {

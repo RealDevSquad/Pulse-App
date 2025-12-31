@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase-admin';
 import { getFreshUserTasks } from '@/lib/tasks-cache';
 import { getUserActivityFromLogs } from '@/lib/logs-cache';
 import { getUserOOOEntries } from '@/lib/ooo-cache';
+import { cacheUserActivity, fetchMemberActivityForCache } from '@/lib/users-cache';
 import { ArrowLeft, Github, Twitter, Linkedin, Globe, Mail, Phone, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -592,13 +593,24 @@ export default async function MemberPage({ params }: PageProps) {
   const statusBadge = getStatusBadge(user.status);
 
   // Fetch user's tasks (fresh) and activity data from cache
-  const [userTasks, activityResult, logsActivity] = await Promise.all([
+  const [userTasks, activityResult, logsActivity, memberActivityData] = await Promise.all([
     getFreshUserTasks(id),
     getCachedUserActivityData(id),
     getUserActivityFromLogs(id),
+    // Fetch the same activity data used by members list to populate LRU cache
+    fetchMemberActivityForCache(id),
   ]);
   
   const { activityData, extendedEndDate } = activityResult;
+
+  // Cache this user's activity in LRU cache for the members list page
+  // This way, when viewing members list, recently visited profiles have cached activity
+  if (memberActivityData) {
+    cacheUserActivity(id, {
+      ...memberActivityData,
+      activeTaskCount: userTasks.length, // Use fresh task count
+    });
+  }
 
   return (
     <div className="space-y-3 sm:space-y-6">
