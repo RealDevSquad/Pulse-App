@@ -4,6 +4,7 @@ import {
   Calendar,
   Users,
   CheckSquare,
+  ListTodo,
   HelpCircle,
   User,
   Building2,
@@ -33,6 +34,7 @@ const getNavItems = (userId?: string) => [
   { title: 'RDS', url: '/rds', icon: Building2 },
   { title: 'OOO', url: '/ooo', icon: Calendar },
   { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+  { title: 'Todos', url: '/todos', icon: ListTodo },
   { title: 'Members', url: '/members', icon: Users },
 ];
 

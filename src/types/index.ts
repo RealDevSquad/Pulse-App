@@ -248,3 +248,165 @@ export type TaskUpdate = Firestore.TaskUpdate;
 export type Progress = Firestore.Progress;
 export type TaskStatus = Firestore.Task['status'];
 export type OOOStatus = Firestore.OOORequest['status'];
+
+// =============================================================================
+// TODO API Types (from todo-backend service)
+// Base URL: https://services.realdevsquad.com/todo
+// =============================================================================
+
+export namespace TodoAPI {
+  /** Task priority levels */
+  export type Priority = 'HIGH' | 'MEDIUM' | 'LOW';
+  
+  /** Priority as numeric value (1=HIGH, 2=MEDIUM, 3=LOW) */
+  export type PriorityNumber = 1 | 2 | 3;
+
+  /** Task status */
+  export type Status = 'TODO' | 'IN_PROGRESS' | 'DEFERRED' | 'BLOCKED' | 'DONE';
+
+  /** Assignee type */
+  export type UserType = 'user' | 'team';
+
+  /** User info in TODO system */
+  export interface TodoUser {
+    id: string;
+    name: string;
+    addedOn?: string | null;
+    tasksAssignedCount?: number | null;
+  }
+
+  /** Label attached to a task */
+  export interface Label {
+    id: string;
+    name: string;
+    color: string;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+    createdBy?: TodoUser | null;
+    updatedBy?: TodoUser | null;
+  }
+
+  /** Assignee info for a task */
+  export interface Assignee {
+    id: string;
+    name: string;
+    relation_type: UserType;
+    is_action_taken: boolean;
+    is_active: boolean;
+  }
+
+  /** Deferred task details */
+  export interface DeferredDetails {
+    deferredAt: string;
+    deferredTill: string;
+    deferredBy: TodoUser;
+  }
+
+  /** Task from TODO API */
+  export interface Todo {
+    id: string;
+    displayId: string;
+    title: string;
+    description?: string | null;
+    priority?: PriorityNumber | null;
+    status?: Status | null;
+    assignee?: Assignee | null;
+    isAcknowledged?: boolean | null;
+    labels: Label[];
+    startedAt?: string | null;
+    dueAt?: string | null;
+    deferredDetails?: DeferredDetails | null;
+    in_watchlist?: boolean | null;
+    createdAt: string;
+    updatedAt?: string | null;
+    createdBy: TodoUser;
+    updatedBy?: TodoUser | null;
+  }
+
+  /** Pagination links */
+  export interface Links {
+    next?: string | null;
+    prev?: string | null;
+  }
+
+  /** GET /v1/tasks response */
+  export interface GetTodosResponse {
+    links?: Links | null;
+    error?: object | null;
+    tasks: Todo[];
+  }
+
+  /** Team info */
+  export interface Team {
+    id: string;
+    name: string;
+    description?: string | null;
+    poc_id?: string | null;
+    invite_code: string;
+    created_by: string;
+    updated_by: string;
+    created_at: string;
+    updated_at: string;
+    users?: unknown[] | null;
+  }
+
+  /** User search result */
+  export interface UserSearchResult {
+    id: string;
+    name: string;
+    email_id: string;
+    created_at: string;
+    updated_at?: string | null;
+  }
+
+  /** GET /v1/users response */
+  export interface UserSearchResponse {
+    users: UserSearchResult[];
+    total_count: number;
+    page: number;
+    limit: number;
+  }
+
+  /** Task assignment */
+  export interface TaskAssignment {
+    id: string;
+    task_id: string;
+    assignee_id: string;
+    user_type: UserType;
+    assignee_name: string;
+    is_active: boolean;
+    created_by: string;
+    updated_by?: string | null;
+    created_at: string;
+    updated_at?: string | null;
+  }
+
+  /** Watchlist task */
+  export interface WatchlistTask {
+    taskId: string;
+    displayId: string;
+    title: string;
+    description?: string | null;
+    priority?: number | null;
+    status?: string | null;
+    isAcknowledged?: boolean | null;
+    isDeleted?: boolean | null;
+    labels: unknown[];
+    dueAt?: string | null;
+    createdAt: string;
+    createdBy: string;
+    watchlistId: string;
+  }
+
+  /** GET /v1/watchlist/tasks response */
+  export interface GetWatchlistResponse {
+    links?: Links | null;
+    error?: object | null;
+    tasks: WatchlistTask[];
+  }
+}
+
+// Convenience exports
+export type Todo = TodoAPI.Todo;
+export type TodoStatus = TodoAPI.Status;
+export type TodoPriority = TodoAPI.Priority;

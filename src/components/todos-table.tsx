@@ -1,0 +1,278 @@
+'use client';
+
+import Link from 'next/link';
+import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { TableRowMotion } from '@/components/ui/motion';
+import { cn } from '@/lib/utils';
+import { getTodoStatusStyle, getPriorityInfo, formatTodoDueDate } from '@/lib/todos';
+import type { TodoAPI } from '@/types';
+import type { TodoStatusFilter, TodoSortField, SortOrder } from '@/lib/todos';
+
+interface TodosTableProps {
+  todos: TodoAPI.Todo[];
+  sortBy: TodoSortField;
+  sortOrder: SortOrder;
+  tab: TodoStatusFilter;
+  search: string;
+  includeDone: boolean;
+}
+
+function buildUrl(params: {
+  tab: TodoStatusFilter;
+  search: string;
+  includeDone: boolean;
+  sortBy: TodoSortField;
+  sortOrder: SortOrder;
+}) {
+  const urlParams = new URLSearchParams();
+  urlParams.set('tab', params.tab);
+  urlParams.set('page', '1');
+  if (params.search) {
+    urlParams.set('search', params.search);
+  }
+  if (params.includeDone) {
+    urlParams.set('includeDone', 'true');
+  }
+  urlParams.set('sortBy', params.sortBy);
+  urlParams.set('sortOrder', params.sortOrder);
+  return `/todos?${urlParams.toString()}`;
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSortBy,
+  currentSortOrder,
+  tab,
+  search,
+  includeDone,
+}: {
+  label: string;
+  sortKey: TodoSortField;
+  currentSortBy: TodoSortField;
+  currentSortOrder: SortOrder;
+  tab: TodoStatusFilter;
+  search: string;
+  includeDone: boolean;
+}) {
+  const isActive = currentSortBy === sortKey;
+  const nextOrder = isActive && currentSortOrder === 'asc' ? 'desc' : 'asc';
+
+  return (
+    <Link
+      href={buildUrl({ tab, search, includeDone, sortBy: sortKey, sortOrder: nextOrder })}
+      className="flex items-center gap-1.5 hover:text-foreground transition-colors font-medium"
+    >
+      {label}
+      {isActive ? (
+        currentSortOrder === 'asc' ? (
+          <ArrowUp className="h-3.5 w-3.5" />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
+      )}
+    </Link>
+  );
+}
+
+export function TodosTable({
+  todos,
+  sortBy,
+  sortOrder,
+  tab,
+  search,
+  includeDone,
+}: TodosTableProps) {
+  if (todos.length === 0) {
+    return (
+      <div className="rounded-xl border bg-card shadow-sm p-12">
+        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+          <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+          <span>No todos found</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-card shadow-sm overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-b-0">
+            <TableHead className="h-12 px-4 bg-muted/30 first:rounded-tl-xl min-w-[300px]">
+              <SortableHeader
+                label="Name"
+                sortKey="title"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                tab={tab}
+                search={search}
+                includeDone={includeDone}
+              />
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[120px]">
+              <SortableHeader
+                label="Status"
+                sortKey="status"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                tab={tab}
+                search={search}
+                includeDone={includeDone}
+              />
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[180px]">
+              Label
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[100px]">
+              <SortableHeader
+                label="Priority"
+                sortKey="priority"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                tab={tab}
+                search={search}
+                includeDone={includeDone}
+              />
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[150px]">
+              Assignee
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[150px]">
+              Created By
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 last:rounded-tr-xl w-[100px]">
+              <SortableHeader
+                label="Due"
+                sortKey="dueAt"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                tab={tab}
+                search={search}
+                includeDone={includeDone}
+              />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {todos.map((todo, index) => {
+            const statusStyle = getTodoStatusStyle(todo.status);
+            const priorityInfo = getPriorityInfo(todo.priority);
+            const dueInfo = formatTodoDueDate(todo.dueAt);
+
+            return (
+              <TableRowMotion
+                key={todo.id}
+                index={index}
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+              >
+                {/* Name */}
+                <TableCell className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {todo.in_watchlist && (
+                      <Eye className="h-4 w-4 text-blue-500 shrink-0" />
+                    )}
+                    <span className="font-medium text-foreground line-clamp-2">
+                      {todo.title}
+                    </span>
+                  </div>
+                </TableCell>
+
+                {/* Status */}
+                <TableCell className="px-4 py-3">
+                  <span
+                    className={cn(
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                      statusStyle.className
+                    )}
+                  >
+                    {statusStyle.label}
+                  </span>
+                </TableCell>
+
+                {/* Labels */}
+                <TableCell className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1">
+                    {todo.labels.length > 0 ? (
+                      todo.labels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                          style={{ backgroundColor: label.color }}
+                        >
+                          {label.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground/60">-</span>
+                    )}
+                  </div>
+                </TableCell>
+
+                {/* Priority */}
+                <TableCell className="px-4 py-3">
+                  {priorityInfo.label !== '-' ? (
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        priorityInfo.bgColor,
+                        priorityInfo.color
+                      )}
+                    >
+                      {priorityInfo.label}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/60">-</span>
+                  )}
+                </TableCell>
+
+                {/* Assignee */}
+                <TableCell className="px-4 py-3">
+                  {todo.assignee ? (
+                    <span className="text-sm text-foreground">
+                      {todo.assignee.name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/60">Unassigned</span>
+                  )}
+                </TableCell>
+
+                {/* Created By */}
+                <TableCell className="px-4 py-3">
+                  <span className="text-sm text-muted-foreground">
+                    {todo.createdBy.name}
+                  </span>
+                </TableCell>
+
+                {/* Due Date */}
+                <TableCell className="px-4 py-3">
+                  <span
+                    className={cn(
+                      'text-sm',
+                      dueInfo.isOverdue
+                        ? 'text-red-600 font-semibold'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {dueInfo.text}
+                  </span>
+                </TableCell>
+              </TableRowMotion>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
