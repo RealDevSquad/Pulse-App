@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { TableRowMotion } from '@/components/ui/motion';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getTodoStatusStyle, getPriorityInfo, formatTodoDueDate } from '@/lib/todos';
 import type { TodoAPI } from '@/types';
@@ -83,6 +84,67 @@ function SortableHeader({
         <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
       )}
     </Link>
+  );
+}
+
+export function TodosTableSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card shadow-sm overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent border-b-0">
+            <TableHead className="h-12 px-4 bg-muted/30 first:rounded-tl-xl min-w-[300px]">
+              <span className="font-medium">Name</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[120px]">
+              <span className="font-medium">Status</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[180px]">
+              <span className="font-medium">Label</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[100px]">
+              <span className="font-medium">Priority</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[150px]">
+              <span className="font-medium">Assignee</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 w-[150px]">
+              <span className="font-medium">Created By</span>
+            </TableHead>
+            <TableHead className="h-12 px-4 bg-muted/30 last:rounded-tr-xl w-[100px]">
+              <span className="font-medium">Due</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 10 }).map((_, index) => (
+            <TableRow key={index} className="border-b border-border/50">
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[250px]" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[80px] rounded-full" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[100px]" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[60px] rounded-full" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[100px]" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[100px]" />
+              </TableCell>
+              <TableCell className="px-4 py-3">
+                <Skeleton className="h-5 w-[60px]" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
