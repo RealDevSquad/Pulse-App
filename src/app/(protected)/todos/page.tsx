@@ -19,7 +19,12 @@ import {
 import type { TodoAPI } from '@/types';
 
 const ITEMS_PER_PAGE = 20;
-const TODO_API_BASE = 'https://services.realdevsquad.com/todo';
+
+// In development, use local API route (returns mock data) because localhost
+// cannot send cookies to production API due to SameSite cookie policies.
+// In production, call the real API directly so browser sends auth cookies.
+const IS_DEV = process.env.NODE_ENV === 'development';
+const TODO_API_BASE = IS_DEV ? '' : 'https://services.realdevsquad.com/todo';
 
 interface TodoStats {
   total: number;
@@ -78,21 +83,32 @@ export default function TodosPage() {
     setError(null);
 
     try {
-      // Calculate page from offset
-      const offset = (page - 1) * ITEMS_PER_PAGE;
-      const apiPage = Math.floor(offset / ITEMS_PER_PAGE) + 1;
-
-      // Build the appropriate endpoint based on filter
-      let endpoint = '/v1/tasks';
-      if (tab === 'watchlist') {
-        endpoint = '/v1/watchlist/tasks';
+      let url: string;
+      
+      if (IS_DEV) {
+        // In development, use local API route which handles all filtering/sorting
+        const params = new URLSearchParams();
+        params.set('page', String(page));
+        params.set('limit', String(ITEMS_PER_PAGE));
+        params.set('tab', tab);
+        params.set('includeDone', String(includeDone));
+        if (search) params.set('search', search);
+        params.set('sortBy', sortBy);
+        params.set('sortOrder', sortOrder);
+        url = `/api/todos?${params.toString()}`;
+      } else {
+        // In production, call the real API
+        let endpoint = '/v1/tasks';
+        if (tab === 'watchlist') {
+          endpoint = '/v1/watchlist/tasks';
+        }
+        const prodUrl = new URL(`${TODO_API_BASE}${endpoint}`);
+        prodUrl.searchParams.set('page', String(page));
+        prodUrl.searchParams.set('limit', String(ITEMS_PER_PAGE));
+        url = prodUrl.toString();
       }
 
-      const url = new URL(`${TODO_API_BASE}${endpoint}`);
-      url.searchParams.set('page', String(apiPage));
-      url.searchParams.set('limit', String(ITEMS_PER_PAGE));
-
-      const response = await fetch(url.toString(), {
+      const response = await fetch(url, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -106,62 +122,65 @@ export default function TodosPage() {
       const data = await response.json() as TodoAPI.GetTodosResponse;
       let fetchedTodos = data.tasks || [];
 
-      // Apply client-side filters that API doesn't support
-      if (tab === 'deferred') {
-        fetchedTodos = fetchedTodos.filter((t) => t.status === 'DEFERRED');
-      }
-
-      if (!includeDone) {
-        fetchedTodos = fetchedTodos.filter((t) => t.status !== 'DONE');
-      }
-
-      // Apply client-side search
-      if (search.trim()) {
-        const searchLower = search.toLowerCase();
-        fetchedTodos = fetchedTodos.filter(
-          (t) =>
-            t.title.toLowerCase().includes(searchLower) ||
-            t.description?.toLowerCase().includes(searchLower) ||
-            t.displayId.toLowerCase().includes(searchLower)
-        );
-      }
-
-      // Apply client-side sorting
-      fetchedTodos.sort((a, b) => {
-        let aVal: string | number | null;
-        let bVal: string | number | null;
-
-        switch (sortBy) {
-          case 'title':
-            aVal = a.title.toLowerCase();
-            bVal = b.title.toLowerCase();
-            break;
-          case 'status':
-            aVal = a.status || '';
-            bVal = b.status || '';
-            break;
-          case 'priority':
-            aVal = a.priority ?? 999;
-            bVal = b.priority ?? 999;
-            break;
-          case 'dueAt':
-            aVal = a.dueAt ? new Date(a.dueAt).getTime() : 0;
-            bVal = b.dueAt ? new Date(b.dueAt).getTime() : 0;
-            break;
-          case 'createdAt':
-          default:
-            aVal = new Date(a.createdAt).getTime();
-            bVal = new Date(b.createdAt).getTime();
+      // In production, apply client-side filters that the API doesn't support
+      // (In dev, the local API already handles all filtering)
+      if (!IS_DEV) {
+        if (tab === 'deferred') {
+          fetchedTodos = fetchedTodos.filter((t) => t.status === 'DEFERRED');
         }
 
-        if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-      });
+        if (!includeDone) {
+          fetchedTodos = fetchedTodos.filter((t) => t.status !== 'DONE');
+        }
+
+        // Apply client-side search
+        if (search.trim()) {
+          const searchLower = search.toLowerCase();
+          fetchedTodos = fetchedTodos.filter(
+            (t) =>
+              t.title.toLowerCase().includes(searchLower) ||
+              t.description?.toLowerCase().includes(searchLower) ||
+              t.displayId.toLowerCase().includes(searchLower)
+          );
+        }
+
+        // Apply client-side sorting
+        fetchedTodos.sort((a, b) => {
+          let aVal: string | number | null;
+          let bVal: string | number | null;
+
+          switch (sortBy) {
+            case 'title':
+              aVal = a.title.toLowerCase();
+              bVal = b.title.toLowerCase();
+              break;
+            case 'status':
+              aVal = a.status || '';
+              bVal = b.status || '';
+              break;
+            case 'priority':
+              aVal = a.priority ?? 999;
+              bVal = b.priority ?? 999;
+              break;
+            case 'dueAt':
+              aVal = a.dueAt ? new Date(a.dueAt).getTime() : 0;
+              bVal = b.dueAt ? new Date(b.dueAt).getTime() : 0;
+              break;
+            case 'createdAt':
+            default:
+              aVal = new Date(a.createdAt).getTime();
+              bVal = new Date(b.createdAt).getTime();
+          }
+
+          if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
 
       // Calculate stats from all todos (this is an approximation since we only have current page)
       const apiHasMore = data.links?.next != null;
-      const totalEstimate = apiHasMore ? (apiPage * ITEMS_PER_PAGE) + 1 : (apiPage - 1) * ITEMS_PER_PAGE + fetchedTodos.length;
+      const totalEstimate = apiHasMore ? (page * ITEMS_PER_PAGE) + 1 : (page - 1) * ITEMS_PER_PAGE + fetchedTodos.length;
 
       setTodos(fetchedTodos);
       setTotal(totalEstimate);
