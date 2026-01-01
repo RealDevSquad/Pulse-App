@@ -4,10 +4,7 @@ import { isRootUser } from '@/lib/users';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TasksContent } from '@/components/tasks-content';
-import { TasksTable } from '@/components/tasks-table';
-import { TasksMobileCards } from '@/components/tasks-mobile-cards';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 
 type TaskTab = 'current' | 'overdue';
 
@@ -38,17 +35,15 @@ interface FilterState {
   statusFilter: TaskStatusFilter;
 }
 
-function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page: number }> = {}) {
+function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page: number; tab: string }> = {}) {
   const params = new URLSearchParams();
-  params.set('tab', 'current');
+  params.set('tab', overrides.tab ?? 'current');
   params.set('sortBy', overrides.sortBy ?? filters.sortBy);
   params.set('sortOrder', overrides.sortOrder ?? filters.sortOrder);
   params.set('status', overrides.statusFilter ?? filters.statusFilter);
   params.set('page', String(overrides.page ?? 1));
   return `/tasks?${params.toString()}`;
 }
-
-
 
 export default async function TasksPage({ searchParams }: PageProps) {
   // Access is already checked in layout
@@ -59,10 +54,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const tab: TaskTab = params.tab === 'overdue' ? 'overdue' : 'current';
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const sortOrder = (params.sortOrder === 'asc' ? 'asc' : 'desc') as SortOrder;
+  const sortBy = (sortableColumns.find(c => c.key === params.sortBy)?.key || 'updatedAt') as TaskSortField;
 
   // Overdue tab - shows assigned non-done tasks past due date
   if (tab === 'overdue') {
-    const sortBy = (sortableColumns.find(c => c.key === params.sortBy)?.key || 'updatedAt') as TaskSortField;
     const filters: FilterState = { sortBy, sortOrder, statusFilter: 'overdue' as TaskStatusFilter };
 
     const { tasks, total, hasMore } = await getCachedTasks({
@@ -84,39 +79,15 @@ export default async function TasksPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-4">
-          <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
-            <Link
-              href="/tasks?tab=current"
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
-                'hover:bg-background/50'
-              )}
-            >
-              Current
-            </Link>
-            <Link
-              href="/tasks?tab=overdue"
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
-                'bg-background text-foreground shadow-sm'
-              )}
-            >
-              Overdue
-            </Link>
-          </div>
-        </div>
-
-        {/* Desktop Table */}
-        <div className="hidden md:block">
-          <TasksTable tasks={tasks} filters={filters} isRoot={isRoot} />
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="md:hidden">
-          <TasksMobileCards tasks={tasks} isRoot={isRoot} isOverdueTab />
-        </div>
+        {/* Content with integrated tabs */}
+        <TasksContent
+          tasks={tasks}
+          filters={filters}
+          isRoot={isRoot}
+          activeTab="overdue"
+          isOverdueTab
+          showFilters={false}
+        />
 
         {/* Pagination - sticky at bottom */}
         {totalPages > 1 && (
@@ -163,7 +134,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   }
 
   // Current tasks tab (default)
-  const sortBy = (sortableColumns.find(c => c.key === params.sortBy)?.key || 'updatedAt') as TaskSortField;
   const statusFilter = (['all', 'active', 'review', 'completed', 'blocked', 'backlog'].includes(params.status || '')
     ? params.status
     : 'active') as TaskStatusFilter;
@@ -189,33 +159,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* Filter Bar + Table/Cards with loading state */}
+      {/* Content with integrated tabs and filters */}
       <TasksContent
         tasks={tasks}
         filters={filters}
         isRoot={isRoot}
-        tabsSlot={
-          <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
-            <Link
-              href="/tasks?tab=current"
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
-                'bg-background text-foreground shadow-sm'
-              )}
-            >
-              Current
-            </Link>
-            <Link
-              href="/tasks?tab=overdue"
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-1.5 text-sm font-medium ring-offset-background transition-all min-h-[36px]',
-                'hover:bg-background/50'
-              )}
-            >
-              Overdue
-            </Link>
-          </div>
-        }
+        activeTab="current"
+        showFilters={true}
       />
 
       {/* Pagination - sticky at bottom */}

@@ -106,17 +106,19 @@ export function TodosFilterBar({
         )}
       </div>
 
-      {/* Include Done Toggle */}
-      <div className="flex items-center gap-2">
-        <Switch
-          id="include-done"
-          checked={includeDone}
-          onCheckedChange={handleIncludeDoneChange}
-        />
-        <Label htmlFor="include-done" className="text-sm text-muted-foreground cursor-pointer">
-          Include Done
-        </Label>
-      </div>
+      {/* Include Done Toggle - only show on All tab */}
+      {tab === 'all' && (
+        <div className="flex items-center gap-2">
+          <Switch
+            id="include-done"
+            checked={includeDone}
+            onCheckedChange={handleIncludeDoneChange}
+          />
+          <Label htmlFor="include-done" className="text-sm text-muted-foreground cursor-pointer">
+            Include Done
+          </Label>
+        </div>
+      )}
     </div>
   );
 }

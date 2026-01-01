@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
+import { CACHE_REVALIDATE_SECONDS } from './cache-constants';
 import type { User } from '@/types';
 
 export interface UserWithActivity extends User {
@@ -237,12 +238,122 @@ function toMinimalUser(user: User): CachedUser {
 }
 
 /**
- * Fetch only active (non-archived) users - minimal data for filtering/sorting.
+ * Fetch users directly from Firestore with pagination.
+ * Used for simple queries that can be handled by Firestore.
+ */
+async function fetchUsersPaginated(options: {
+  archived: boolean;
+  inDiscord?: boolean;
+  hideSuperusers?: boolean;
+  sortBy: 'created_at' | 'first_name' | 'username' | 'github_id';
+  sortOrder: 'asc' | 'desc';
+  limit: number;
+  offset: number;
+}): Promise<{ users: CachedUser[]; total: number }> {
+  const { archived, inDiscord, hideSuperusers, sortBy, sortOrder, limit, offset } = options;
+
+  console.log(`[Cache] Fetching users paginated: archived=${archived}, offset=${offset}, limit=${limit}`);
+
+  // Build base query
+  let query = db.collection('users').where('roles.archived', '==', archived);
+
+  // Add inDiscord filter if specified
+  if (inDiscord !== undefined) {
+    query = query.where('roles.in_discord', '==', inDiscord);
+  }
+
+  // Note: hideSuperusers filter must be applied in-memory since Firestore
+  // doesn't support != queries combined with other inequality operators well
+  
+  // Add sorting - Firestore requires the sorted field to exist
+  // For created_at, we can sort directly
+  if (sortBy === 'created_at') {
+    query = query.orderBy('created_at', sortOrder);
+  }
+  // For other fields, we need to fetch all and sort in memory
+  // since Firestore doesn't index these fields reliably
+
+  // Get total count first (separate query)
+  let countQuery = db.collection('users').where('roles.archived', '==', archived);
+  if (inDiscord !== undefined) {
+    countQuery = countQuery.where('roles.in_discord', '==', inDiscord);
+  }
+  const countSnapshot = await countQuery.count().get();
+  let total = countSnapshot.data().count;
+
+  // Fetch paginated results
+  // For created_at sorting, use Firestore pagination
+  if (sortBy === 'created_at') {
+    const paginatedQuery = query.offset(offset).limit(limit);
+    const snapshot = await paginatedQuery.get();
+    
+    let users = snapshot.docs.map((doc) =>
+      toMinimalUser({ id: doc.id, ...doc.data() } as User)
+    );
+
+    // Apply hideSuperusers filter in memory
+    if (hideSuperusers) {
+      users = users.filter((u) => !u.roles?.super_user);
+      // Adjust total - this is approximate since we can't efficiently count non-superusers
+    }
+
+    console.log(`[Cache] Fetched ${users.length} users (total: ${total})`);
+    return { users, total };
+  }
+
+  // For other sort fields, fetch a reasonable batch and sort in memory
+  // This is a fallback - ideally we'd have Firestore indexes for these
+  const batchSize = Math.min(500, offset + limit + 100); // Fetch enough to cover pagination
+  const snapshot = await query.limit(batchSize).get();
+  
+  let users = snapshot.docs.map((doc) =>
+    toMinimalUser({ id: doc.id, ...doc.data() } as User)
+  );
+
+  // Apply hideSuperusers filter
+  if (hideSuperusers) {
+    users = users.filter((u) => !u.roles?.super_user);
+  }
+
+  // Sort in memory
+  users.sort((a, b) => {
+    let aVal: string = '';
+    let bVal: string = '';
+    
+    switch (sortBy) {
+      case 'first_name':
+        aVal = a.first_name?.toLowerCase() || '';
+        bVal = b.first_name?.toLowerCase() || '';
+        break;
+      case 'username':
+        aVal = a.username?.toLowerCase() || '';
+        bVal = b.username?.toLowerCase() || '';
+        break;
+      case 'github_id':
+        aVal = a.github_id?.toLowerCase() || '';
+        bVal = b.github_id?.toLowerCase() || '';
+        break;
+    }
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Paginate
+  const paginatedUsers = users.slice(offset, offset + limit);
+  
+  console.log(`[Cache] Fetched ${paginatedUsers.length} users (total: ${users.length})`);
+  return { users: paginatedUsers, total: users.length };
+}
+
+/**
+ * Fetch all active users - only used for search and activity-based sorting.
  * Cached for 5 minutes.
  */
-const fetchActiveUsers = unstable_cache(
+const fetchAllActiveUsers = unstable_cache(
   async (): Promise<CachedUser[]> => {
-    console.log('[Cache] Fetching active users (minimal data)...');
+    console.log('[Cache] Fetching ALL active users for search/activity sort...');
 
     const usersSnapshot = await db
       .collection('users')
@@ -256,18 +367,17 @@ const fetchActiveUsers = unstable_cache(
     console.log(`[Cache] Fetched ${users.length} active users`);
     return users;
   },
-  ['active-users-minimal'],
-  { revalidate: 300 }
+  ['all-active-users-minimal'],
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 /**
- * Fetch archived users - minimal data for filtering/sorting.
- * Only loaded when needed (search or archived filter).
+ * Fetch all archived users - only used for search within archived.
  * Cached for 5 minutes.
  */
-const fetchArchivedUsers = unstable_cache(
+const fetchAllArchivedUsers = unstable_cache(
   async (): Promise<CachedUser[]> => {
-    console.log('[Cache] Fetching archived users (minimal data)...');
+    console.log('[Cache] Fetching ALL archived users for search...');
 
     const usersSnapshot = await db
       .collection('users')
@@ -281,51 +391,81 @@ const fetchArchivedUsers = unstable_cache(
     console.log(`[Cache] Fetched ${users.length} archived users`);
     return users;
   },
-  ['archived-users-minimal'],
-  { revalidate: 300 }
+  ['all-archived-users-minimal'],
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 /**
  * Get users with filtering, sorting, search, and pagination.
  * 
  * Strategy:
- * 1. Load minimal user data from cache (small, fits in 2MB)
- * 2. Apply filters, search, and sorting
- * 3. Paginate to get subset
- * 4. Fetch activity data only for the paginated users (not cached)
+ * - Simple queries (no search, no activity sort): Use Firestore pagination directly
+ * - Complex queries (search or activity sort): Load all users, filter/sort in memory
  */
 export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promise<GetCachedUsersResult> {
   const {
     sortBy = 'created_at',
     sortOrder = 'desc',
     inDiscord,
-    archived,
+    archived = false,
     hideSuperusers,
     limit = 20,
     offset = 0,
     search,
   } = options;
 
-  // Determine which user sets we need
-  const needsArchivedUsers = !!search?.trim() || archived === true;
-  
-  let users: CachedUser[];
-  
-  if (needsArchivedUsers) {
-    // Load both active and archived users for search or when viewing archived
-    const [activeUsers, archivedUsers] = await Promise.all([
-      fetchActiveUsers(),
-      fetchArchivedUsers(),
-    ]);
-    users = [...activeUsers, ...archivedUsers];
-  } else {
-    // Only load active users (default case)
-    users = await fetchActiveUsers();
+  const isActivitySort = ['lastProgress', 'lastTaskUpdate', 'activeTaskCount'].includes(sortBy);
+  const hasSearch = !!(search && search.trim());
+  const isSimpleSort = ['created_at', 'first_name', 'username', 'github_id'].includes(sortBy);
+
+  // For simple queries without search or activity sort, use Firestore pagination
+  if (!hasSearch && !isActivitySort && isSimpleSort) {
+    const { users: paginatedUsers, total } = await fetchUsersPaginated({
+      archived,
+      inDiscord,
+      hideSuperusers,
+      sortBy: sortBy as 'created_at' | 'first_name' | 'username' | 'github_id',
+      sortOrder,
+      limit,
+      offset,
+    });
+
+    // Fetch activity data only for paginated users
+    const activityMap = await fetchActivityForUsers(paginatedUsers.map(u => u.id));
+
+    const usersWithActivity: UserWithActivity[] = paginatedUsers.map((user) => {
+      const activity = activityMap.get(user.id) || {
+        lastProgress: null,
+        lastProgressTaskId: null,
+        lastTaskUpdate: null,
+        lastTaskUpdateId: null,
+        activeTaskCount: 0,
+      };
+      return {
+        ...user,
+        ...activity,
+      } as UserWithActivity;
+    });
+
+    return {
+      users: usersWithActivity,
+      total,
+      hasMore: offset + paginatedUsers.length < total,
+    };
   }
 
-  // Apply search filter first (searches name, username, github_id)
-  if (search && search.trim()) {
-    const searchLower = search.toLowerCase().trim();
+  // Complex query: need to load all users for search or activity-based sorting
+  let users: CachedUser[];
+  
+  if (archived) {
+    users = await fetchAllArchivedUsers();
+  } else {
+    users = await fetchAllActiveUsers();
+  }
+
+  // Apply search filter (searches name, username, github_id)
+  if (hasSearch) {
+    const searchLower = search!.toLowerCase().trim();
     users = users.filter((u) => {
       const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
       const username = (u.username || '').toLowerCase();
@@ -342,25 +482,12 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
   if (inDiscord !== undefined) {
     users = users.filter((u) => u.roles?.in_discord === inDiscord);
   }
-  if (archived !== undefined) {
-    users = users.filter((u) => u.roles?.archived === archived);
-  }
   if (hideSuperusers) {
     users = users.filter((u) => !u.roles?.super_user);
   }
 
-  // For activity-based sorting, we need to fetch activity for all filtered users
-  // This is expensive, so we only do it when sorting by activity fields
-  const isActivitySort = ['lastProgress', 'lastTaskUpdate', 'activeTaskCount'].includes(sortBy);
-  
   let sortedUsers: CachedUser[];
-  let activityMap: Map<string, {
-    lastProgress: number | null;
-    lastProgressTaskId: string | null;
-    lastTaskUpdate: number | null;
-    lastTaskUpdateId: string | null;
-    activeTaskCount: number;
-  }> | null = null;
+  let activityMap: Map<string, ActivityData> | null = null;
 
   if (isActivitySort) {
     // Fetch activity for all filtered users to enable sorting
@@ -396,7 +523,7 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
       return 0;
     });
   } else {
-    // Sort by non-activity fields (no activity fetch needed)
+    // Sort by non-activity fields
     sortedUsers = [...users].sort((a, b) => {
       let aVal: string | number;
       let bVal: string | number;
@@ -427,8 +554,6 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
   }
 
   const total = sortedUsers.length;
-
-  // Paginate
   const paginatedUsers = sortedUsers.slice(offset, offset + limit);
 
   // Fetch activity data only for paginated users (if not already fetched)
@@ -436,7 +561,6 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
     activityMap = await fetchActivityForUsers(paginatedUsers.map(u => u.id));
   }
 
-  // Combine paginated users with activity data
   const usersWithActivity: UserWithActivity[] = paginatedUsers.map((user) => {
     const activity = activityMap!.get(user.id) || {
       lastProgress: null,
@@ -447,11 +571,7 @@ export async function getCachedUsers(options: GetCachedUsersOptions = {}): Promi
     };
     return {
       ...user,
-      lastProgress: activity.lastProgress,
-      lastProgressTaskId: activity.lastProgressTaskId,
-      lastTaskUpdate: activity.lastTaskUpdate,
-      lastTaskUpdateId: activity.lastTaskUpdateId,
-      activeTaskCount: activity.activeTaskCount,
+      ...activity,
     } as UserWithActivity;
   });
 
@@ -491,7 +611,7 @@ const fetchActiveMembersCount = unstable_cache(
     return assigneeSet.size;
   },
   ['active-members-count'],
-  { revalidate: 300 }
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 export async function getActiveMembersCount(): Promise<number> {
@@ -510,10 +630,10 @@ export interface ActiveUserInfo {
  * Get a map of active (non-archived) user IDs to their basic info.
  */
 export async function getActiveUsersMap(): Promise<Map<string, ActiveUserInfo>> {
-  const users = await fetchActiveUsers();
+  const users = await fetchAllActiveUsers();
   const map = new Map<string, ActiveUserInfo>();
 
-  users.forEach((user) => {
+  users.forEach((user: CachedUser) => {
     map.set(user.id, {
       id: user.id,
       username: user.username,
@@ -537,45 +657,51 @@ export interface SearchSuggestion {
 
 /**
  * Get search suggestions for autocomplete.
- * Loads both active and archived users for comprehensive search.
- * Returns up to 10 matching users.
+ * Queries Firestore directly with prefix search (requires 3+ characters).
+ * Searches by username prefix for efficiency.
  */
 export async function getSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
-  if (!query || query.trim().length < 2) {
+  if (!query || query.trim().length < 3) {
     return [];
   }
 
-  // Load both active and archived users for search suggestions
-  const [activeUsers, archivedUsers] = await Promise.all([
-    fetchActiveUsers(),
-    fetchArchivedUsers(),
-  ]);
-  const allUsers = [...activeUsers, ...archivedUsers];
-  
   const searchLower = query.toLowerCase().trim();
+  const searchUpper = searchLower.slice(0, -1) + String.fromCharCode(searchLower.charCodeAt(searchLower.length - 1) + 1);
 
-  const matches = allUsers
-    .filter((u) => {
-      const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
-      const username = (u.username || '').toLowerCase();
-      const githubId = (u.github_id || '').toLowerCase();
-      return (
-        fullName.includes(searchLower) ||
-        username.includes(searchLower) ||
-        githubId.includes(searchLower)
-      );
-    })
-    .slice(0, 10)
-    .map((u) => ({
-      id: u.id,
-      username: u.username,
-      first_name: u.first_name,
-      last_name: u.last_name,
-      picture: u.picture,
-      isArchived: u.roles?.archived || false,
-    }));
+  // Query by username prefix (Firestore supports prefix queries)
+  // Search both active and archived users in parallel
+  const [activeSnapshot, archivedSnapshot] = await Promise.all([
+    db.collection('users')
+      .where('roles.archived', '==', false)
+      .where('username', '>=', searchLower)
+      .where('username', '<', searchUpper)
+      .limit(10)
+      .get(),
+    db.collection('users')
+      .where('roles.archived', '==', true)
+      .where('username', '>=', searchLower)
+      .where('username', '<', searchUpper)
+      .limit(10)
+      .get(),
+  ]);
 
-  return matches;
+  const mapToSuggestion = (doc: FirebaseFirestore.DocumentSnapshot, isArchived: boolean): SearchSuggestion => {
+    const data = doc.data() as User;
+    return {
+      id: doc.id,
+      username: data.username,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      picture: data.picture,
+      isArchived,
+    };
+  };
+
+  const activeMatches = activeSnapshot.docs.map((doc) => mapToSuggestion(doc, false));
+  const archivedMatches = archivedSnapshot.docs.map((doc) => mapToSuggestion(doc, true));
+
+  // Combine: active first, then archived, limit to 10
+  return [...activeMatches, ...archivedMatches].slice(0, 10);
 }
 
 /**

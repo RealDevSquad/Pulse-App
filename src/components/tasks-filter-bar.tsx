@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useTransition, useState } from 'react';
+import { useTransition, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   Select,
@@ -45,11 +45,10 @@ const statusOptions: { value: TaskStatusFilter; label: string }[] = [
 export function TasksFilterBar({ filters, onLoadingChange }: TasksFilterBarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [optimisticFilter, setOptimisticFilter] = useState(filters.statusFilter);
+  const wasNavigating = useRef(false);
 
   const handleStatusChange = (value: TaskStatusFilter) => {
-    // Update UI immediately
-    setOptimisticFilter(value);
+    wasNavigating.current = true;
     onLoadingChange?.(true);
     
     // Navigate with transition
@@ -58,15 +57,17 @@ export function TasksFilterBar({ filters, onLoadingChange }: TasksFilterBarProps
     });
   };
 
-  // Sync optimistic state when filters change (navigation complete)
-  if (!isPending && optimisticFilter !== filters.statusFilter) {
-    setOptimisticFilter(filters.statusFilter);
-    onLoadingChange?.(false);
-  }
+  // When transition completes, stop loading
+  useEffect(() => {
+    if (!isPending && wasNavigating.current) {
+      wasNavigating.current = false;
+      onLoadingChange?.(false);
+    }
+  }, [isPending, onLoadingChange]);
 
   return (
     <div className="flex items-center gap-2">
-      <Select value={optimisticFilter} onValueChange={handleStatusChange}>
+      <Select value={filters.statusFilter} onValueChange={handleStatusChange}>
         <SelectTrigger 
           className="w-[140px] h-10 bg-background hover:bg-accent/50 transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-1"
           aria-label="Filter by status"

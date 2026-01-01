@@ -60,6 +60,22 @@ All features MUST be mobile responsive. Follow these breakpoints:
 - Prefer server components where possible
 - Use `@/` path alias for imports
 
+## Communication
+
+When completing UI features, always include an ASCII UI preview showing how the component looks. Example:
+
+```
+┌─────────────────────────────────────────┐
+│ [Status Badge]      Date info           │
+│ Description text here                   │
+└─────────────────────────────────────────┘
+
+▶ Collapsible section (count)
+   └─ Expanded content here
+```
+
+This helps visualize the implementation without running the app.
+
 ## URL State (Critical)
 
 **All filter/sort/pagination state MUST be persisted in URL params** so users can bookmark their current view. Every link that changes page state must preserve all existing filter parameters.

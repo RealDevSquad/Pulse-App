@@ -286,13 +286,27 @@ export namespace TodoAPI {
     updatedBy?: TodoUser | null;
   }
 
-  /** Assignee info for a task */
+  /** Assignee info for a task (full structure from API) */
   export interface Assignee {
     id: string;
-    name: string;
-    relation_type: UserType;
-    is_action_taken: boolean;
+    task_id?: string;
+    assignee_id?: string;
+    assignee_name?: string;
+    /** For backward compatibility - maps to assignee_name */
+    name?: string;
+    user_type?: UserType;
+    /** For backward compatibility - maps to user_type */
+    relation_type?: UserType;
+    executor_id?: string | null;
+    /** Team this task belongs to */
+    team_id?: string | null;
     is_active: boolean;
+    /** @deprecated use is_active */
+    is_action_taken?: boolean;
+    created_by?: string;
+    updated_by?: string | null;
+    created_at?: string;
+    updated_at?: string | null;
   }
 
   /** Deferred task details */
@@ -310,6 +324,7 @@ export namespace TodoAPI {
     description?: string | null;
     priority?: PriorityNumber | null;
     status?: Status | null;
+    /** Assignee contains user info AND team_id */
     assignee?: Assignee | null;
     isAcknowledged?: boolean | null;
     labels: Label[];
@@ -381,21 +396,31 @@ export namespace TodoAPI {
     updated_at?: string | null;
   }
 
+  /** Watchlist task assignee (different structure from regular Todo assignee) */
+  export interface WatchlistAssignee {
+    assignee_id: string;
+    assignee_name: string;
+    user_type: UserType;
+  }
+
   /** Watchlist task */
   export interface WatchlistTask {
     taskId: string;
     displayId: string;
     title: string;
     description?: string | null;
-    priority?: number | null;
+    /** Priority can be string ("HIGH", "MEDIUM", "LOW") or number (1, 2, 3) */
+    priority?: string | number | null;
     status?: string | null;
     isAcknowledged?: boolean | null;
     isDeleted?: boolean | null;
-    labels: unknown[];
+    deferredDetails?: DeferredDetails | null;
+    labels: Label[];
     dueAt?: string | null;
     createdAt: string;
-    createdBy: string;
+    createdBy: TodoUser;
     watchlistId: string;
+    assignee?: WatchlistAssignee | null;
   }
 
   /** GET /v1/watchlist/tasks response */

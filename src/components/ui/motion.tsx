@@ -319,33 +319,41 @@ export function Collapse({
 }
 
 /**
- * TableRowMotion - Animated table row wrapper
+ * TableRowMotion - Animated table row wrapper with hover and click effects
  */
 export function TableRowMotion({
   children,
   index = 0,
   className,
+  onClick,
 }: {
   children: React.ReactNode;
   index?: number;
   className?: string;
+  onClick?: (e: React.MouseEvent<HTMLTableRowElement>) => void;
 }) {
   const { duration, staggerDelay, easeOut, prefersReducedMotion } = useMotionConfig();
 
   if (prefersReducedMotion) {
-    return <tr className={className}>{children}</tr>;
+    return <tr className={className} onClick={onClick}>{children}</tr>;
   }
 
   return (
     <motion.tr
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
+      whileHover={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        transition: { duration: 0.15 }
+      }}
+      whileTap={{ scale: 0.995 }}
       transition={{ 
         duration: duration.normal, 
         delay: index * staggerDelay,
         ease: easeOut,
       }}
       className={className}
+      onClick={onClick}
     >
       {children}
     </motion.tr>

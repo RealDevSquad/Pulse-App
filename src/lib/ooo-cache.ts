@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
 import { getActiveUsersMap } from './users-cache';
+import { CACHE_REVALIDATE_SECONDS } from './cache-constants';
 import type { OOORequest, UserStatus, User } from '@/types';
 
 export type OOOSource = 'requests' | 'usersStatus';
@@ -137,7 +138,7 @@ const fetchAllOOOData = unstable_cache(
     return filteredEntries;
   },
   ['ooo-all-data'],
-  { revalidate: 300 } // 5 minutes
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 /**
@@ -285,7 +286,7 @@ const fetchFutureStatuses = unstable_cache(
     return filteredEntries;
   },
   ['future-statuses'],
-  { revalidate: 300 } // 5 minutes
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 /**
@@ -353,7 +354,7 @@ const fetchOOOTodayCount = unstable_cache(
     return count;
   },
   ['ooo-today-count'],
-  { revalidate: 300 } // 5 minutes
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 export async function getOOOTodayCount(): Promise<number> {

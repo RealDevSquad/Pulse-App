@@ -45,9 +45,9 @@ export function MembersSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch suggestions
+  // Fetch suggestions - requires 3+ characters, queries Firestore directly
   const fetchSuggestions = useCallback(async (searchQuery: string) => {
-    if (searchQuery.length < 2) {
+    if (searchQuery.length < 3) {
       setSuggestions([]);
       return;
     }
@@ -159,7 +159,7 @@ export function MembersSearch() {
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+          onFocus={() => query.length >= 3 && setShowSuggestions(true)}
           className="pl-10 pr-10 h-10 text-sm"
         />
         {query && (
@@ -209,7 +209,7 @@ export function MembersSearch() {
       )}
 
       {/* No results */}
-      {showSuggestions && query.length >= 2 && !isLoading && suggestions.length === 0 && (
+      {showSuggestions && query.length >= 3 && !isLoading && suggestions.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-popover border rounded-lg shadow-lg p-4 text-center text-muted-foreground text-sm">
           No members found matching &quot;{query}&quot;
         </div>

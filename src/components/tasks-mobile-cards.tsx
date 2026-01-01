@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonPulse } from '@/components/ui/skeleton';
 import { TaskActionsMenu } from '@/components/task-actions-menu';
-import { cn, getStatusBadgeStyle, formatRelativeTime } from '@/lib/utils';
+import { TaskDetailModal } from '@/components/task-detail-modal';
+import { cn, getStatusBadgeStyle, formatRelativeTime, isTaskUrgent, getTaskLatestActivity, isTaskUpdateStale } from '@/lib/utils';
 import type { TaskWithAssignee } from '@/lib/tasks-cache';
 
 function getInitials(firstName?: string, lastName?: string, username?: string): string {
@@ -29,6 +31,18 @@ interface TasksMobileCardsProps {
 }
 
 export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksMobileCardsProps) {
+  const [selectedTask, setSelectedTask] = useState<TaskWithAssignee | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleCardClick = (task: TaskWithAssignee, e: React.MouseEvent) => {
+    // Don't open modal if clicking on a link or button
+    const target = e.target as HTMLElement;
+    if (target.closest('a') || target.closest('button')) return;
+    
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
@@ -39,11 +53,14 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
   }
 
   return (
+    <>
     <div className="space-y-6">
       {tasks.map((task) => {
         const statusInfo = getStatusBadgeStyle(task.status);
-        const updatedTime = formatRelativeTime(task.latestActivityAt || task.updatedAt || task.updated_at);
+        const latestActivity = getTaskLatestActivity(task);
+        const updatedTime = formatRelativeTime(latestActivity);
         const isDone = task.status?.toUpperCase() === 'COMPLETED' || task.status?.toUpperCase() === 'DONE';
+        const isUpdateStale = isTaskUpdateStale(task.status, latestActivity);
         
         const dueInfo = (() => {
           if (!task.endsOn || task.status?.toUpperCase() === 'BACKLOG') return null;
@@ -52,6 +69,7 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
           const diff = ms - now;
           const days = Math.floor(diff / (1000 * 60 * 60 * 24));
           const isOverdue = days < 0 && !isDone;
+          const isUrgent = isTaskUrgent(task.status, task.endsOn);
           let text: string;
           if (days < -365) text = isDone ? `${Math.floor(-days / 365)}y ago` : `${Math.floor(-days / 365)}y overdue`;
           else if (days < -30) text = isDone ? `${Math.floor(-days / 30)}mo ago` : `${Math.floor(-days / 30)}mo overdue`;
@@ -63,41 +81,41 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
           else if (days < 7) text = `In ${days}d`;
           else if (days < 30) text = `In ${Math.floor(days / 7)}w`;
           else text = `In ${Math.floor(days / 30)}mo`;
-          return { text, isOverdue };
+          return { text, isOverdue, isUrgent };
         })();
 
         return (
-          <div key={task.id} className="p-4 rounded-lg bg-card border shadow-sm space-y-3 overflow-hidden">
+          <div 
+            key={task.id} 
+            className="p-4 rounded-lg bg-card border shadow-sm space-y-3 overflow-hidden cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={(e) => handleCardClick(task, e)}
+          >
             {/* Header: Title + Status */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <a
-                  href={`https://status.realdevsquad.com/tasks/${task.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-foreground leading-snug line-clamp-2 hover:text-primary hover:underline transition-colors"
-                >
+                <span className="font-semibold text-foreground leading-snug line-clamp-2">
                   {task.title}
-                </a>
+                </span>
               </div>
               <div className="shrink-0 flex flex-col gap-1">
-                <Link href={`/task/${task.id}`}>
-                  <span className={cn(statusInfo.className, 'text-xs')}>
-                    {statusInfo.label}
-                  </span>
-                </Link>
+                <span className={cn(statusInfo.className, 'text-xs')}>
+                  {statusInfo.label}
+                </span>
                 {/* Progress bar for in-progress tasks */}
-                {task.status?.toUpperCase() === 'IN_PROGRESS' && task.percentCompleted !== undefined && (
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${task.percentCompleted}%` }}
-                      />
+                {task.status?.toUpperCase() === 'IN_PROGRESS' && task.percentCompleted !== undefined && (() => {
+                  const isUrgent = isTaskUrgent(task.status, task.endsOn);
+                  return (
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${isUrgent ? 'bg-red-500' : 'bg-primary'}`}
+                          style={{ width: `${task.percentCompleted}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs tabular-nums ${isUrgent ? 'text-red-600' : 'text-muted-foreground'}`}>{task.percentCompleted}%</span>
                     </div>
-                    <span className="text-xs text-muted-foreground tabular-nums">{task.percentCompleted}%</span>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
@@ -126,7 +144,9 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
                   'text-xs font-medium px-2 py-0.5 rounded-full shrink-0',
                   dueInfo.isOverdue 
                     ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-                    : 'bg-muted text-muted-foreground'
+                    : dueInfo.isUrgent
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                      : 'bg-muted text-muted-foreground'
                 )}>
                   {dueInfo.text}
                 </span>
@@ -135,7 +155,10 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
 
             {/* Footer: Updated time + GitHub + Actions */}
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm text-muted-foreground/70">{updatedTime}</span>
+              <span className={cn(
+                "text-sm",
+                isUpdateStale ? "text-orange-600 font-medium" : "text-muted-foreground/70"
+              )}>{updatedTime}</span>
               <div className="flex items-center gap-1 shrink-0">
                 {task.github?.issue?.html_url && (
                   <a
@@ -167,6 +190,13 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
         );
       })}
     </div>
+
+    <TaskDetailModal
+      task={selectedTask}
+      open={isModalOpen}
+      onOpenChange={setIsModalOpen}
+    />
+    </>
   );
 }
 

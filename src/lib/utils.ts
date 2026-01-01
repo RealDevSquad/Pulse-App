@@ -188,6 +188,42 @@ export function getTypeStyle(type?: string): { label: string; className: string 
 // ============================================================================
 
 /**
+ * Get the latest activity timestamp for a task.
+ * Returns the most recent of: latestActivityAt (includes progress updates), updatedAt, or updated_at
+ * All converted to milliseconds.
+ * 
+ * Note: `latestActivityAt` is populated by tasks-cache and includes the latest progress update timestamp.
+ */
+export function getTaskLatestActivity(task: {
+  latestActivityAt?: number;
+  updatedAt?: number;
+  updated_at?: number;
+}): number | undefined {
+  // latestActivityAt is already the max of (updatedAt, updated_at, latest progress)
+  // computed in tasks-cache, so use it directly if available
+  if (task.latestActivityAt) {
+    return task.latestActivityAt;
+  }
+  
+  // Fallback for tasks not from cache
+  const candidates: number[] = [];
+  
+  // updatedAt is in seconds
+  if (task.updatedAt) {
+    candidates.push(task.updatedAt * 1000);
+  }
+  
+  // updated_at is in ms
+  if (task.updated_at) {
+    candidates.push(task.updated_at);
+  }
+  
+  if (candidates.length === 0) return undefined;
+  
+  return Math.max(...candidates);
+}
+
+/**
  * Format a timestamp as relative time (e.g., "2d ago", "Yesterday")
  */
 export function formatRelativeTime(timestamp: number | undefined): string {
@@ -236,4 +272,49 @@ export function formatDueDate(timestamp: number | undefined, isDone: boolean = f
   else text = `In ${Math.floor(days / 365)}y`;
 
   return { text, isOverdue };
+}
+
+/**
+ * Check if a task is urgent (in progress/review with <= 2 days left)
+ * Used to show warning styling on progress bars and due dates
+ */
+export function isTaskUrgent(status?: string, endsOn?: number): boolean {
+  if (!status || !endsOn) return false;
+  
+  const upperStatus = status.toUpperCase();
+  const isActiveStatus = upperStatus === 'IN_PROGRESS' || 
+                         upperStatus === 'NEEDS_REVIEW' || 
+                         upperStatus === 'IN_REVIEW';
+  
+  if (!isActiveStatus) return false;
+  
+  // Handle both seconds and milliseconds
+  const ms = endsOn > 1e12 ? endsOn : endsOn * 1000;
+  const now = Date.now();
+  const diff = ms - now;
+  const days = diff / (1000 * 60 * 60 * 24);
+  
+  // Urgent if <= 2 days left (including already overdue)
+  return days <= 2;
+}
+
+/**
+ * Check if a task's last update is stale (>= 2 days ago and task not done)
+ * Used to show warning styling on the "Updated" column
+ */
+export function isTaskUpdateStale(status?: string, lastUpdated?: number): boolean {
+  if (!lastUpdated) return false;
+  
+  // Don't show stale warning for completed tasks
+  const upperStatus = status?.toUpperCase();
+  const isDone = upperStatus === 'COMPLETED' || upperStatus === 'DONE';
+  if (isDone) return false;
+  
+  // Handle both seconds and milliseconds
+  const ms = lastUpdated > 1e12 ? lastUpdated : lastUpdated * 1000;
+  const now = Date.now();
+  const daysSinceUpdate = (now - ms) / (1000 * 60 * 60 * 24);
+  
+  // Stale if >= 2 days since last update
+  return daysSinceUpdate >= 2;
 }

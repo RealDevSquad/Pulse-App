@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
 import { getActiveUsersMap } from './users-cache';
+import { CACHE_REVALIDATE_SECONDS } from './cache-constants';
 
 // Log types from Firestore
 export interface LogEntry {
@@ -127,7 +128,7 @@ const fetchRecentLogs = unstable_cache(
     return logs;
   },
   ['recent-logs'],
-  { revalidate: 300 } // 5 minutes
+  { revalidate: CACHE_REVALIDATE_SECONDS }
 );
 
 /**

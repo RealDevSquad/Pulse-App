@@ -99,13 +99,8 @@ Request Body:
 
 #### Update Task
 ```
-PATCH /v1/tasks/{task_id}
+PATCH /v1/tasks/{task_id}/update
 ```
-
-Query Parameters:
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| action | string | Action to perform: 'update' or 'defer' |
 
 Request Body:
 ```json
@@ -119,6 +114,18 @@ Request Body:
   "dueAt": "datetime | null",
   "startedAt": "datetime | null",
   "isAcknowledged": boolean
+}
+```
+
+#### Defer Task
+```
+PATCH /v1/tasks/{task_id}?action=defer
+```
+
+Request Body:
+```json
+{
+  "deferredTill": "datetime"
 }
 ```
 

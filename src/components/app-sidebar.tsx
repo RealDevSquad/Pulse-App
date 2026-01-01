@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  Calendar,
-  Users,
-  CheckSquare,
-  ListTodo,
-  HelpCircle,
-  User,
-  Building2,
-  Settings,
-} from 'lucide-react';
+import { useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -28,21 +19,65 @@ import {
 } from '@/components/ui/sidebar';
 import { NavItemMotion, FadeIn } from '@/components/ui/motion';
 
-// Note: 'Me' URL is dynamically set based on userId to avoid redirect issues with AnimatePresence
-const getNavItems = (userId?: string) => [
-  { title: 'Me', url: userId ? `/member/${userId}` : '/me', icon: User },
-  { title: 'RDS', url: '/rds', icon: Building2 },
-  { title: 'OOO', url: '/ooo', icon: Calendar },
-  { title: 'Tasks', url: '/tasks', icon: CheckSquare },
-  { title: 'Todos', url: '/todos', icon: ListTodo },
-  { title: 'Members', url: '/members', icon: Users },
-];
+// Animated icons from lucide-animated
+import { UserIcon, type UserIconHandle } from '@/components/ui/user';
+import { BlocksIcon, type BlocksIconHandle } from '@/components/ui/blocks';
+import { CalendarDaysIcon, type CalendarDaysIconHandle } from '@/components/ui/calendar-days';
+import { ClipboardCheckIcon, type ClipboardCheckIconHandle } from '@/components/ui/clipboard-check';
+import { SquarePenIcon, type SquarePenIconHandle } from '@/components/ui/square-pen';
+import { UsersIcon, type UsersIconHandle } from '@/components/ui/users';
+import { SettingsIcon, type SettingsIconHandle } from '@/components/ui/settings';
+import { CircleHelpIcon, type CircleHelpIconHandle } from '@/components/ui/circle-help';
 
-const adminItems = [{ title: 'Settings', url: '/settings', icon: Settings }];
+// Icon size
+const ICON_SIZE = 18;
 
-const footerItems = [
-  { title: 'Help', url: '/help', icon: HelpCircle },
-];
+// Union type for all icon handles
+type IconHandle = 
+  | UserIconHandle 
+  | BlocksIconHandle 
+  | CalendarDaysIconHandle 
+  | ClipboardCheckIconHandle 
+  | SquarePenIconHandle 
+  | UsersIconHandle 
+  | SettingsIconHandle 
+  | CircleHelpIconHandle;
+
+// Icon component type
+type IconComponent = typeof UserIcon | typeof BlocksIcon | typeof CalendarDaysIcon | 
+  typeof ClipboardCheckIcon | typeof SquarePenIcon | typeof UsersIcon | 
+  typeof SettingsIcon | typeof CircleHelpIcon;
+
+interface NavItemProps {
+  title: string;
+  url: string;
+  Icon: IconComponent;
+  isActive: boolean;
+  onClick: () => void;
+  index: number;
+}
+
+function NavItem({ title, url, Icon, isActive, onClick, index }: NavItemProps) {
+  const iconRef = useRef<IconHandle>(null);
+
+  return (
+    <SidebarMenuItem>
+      <NavItemMotion index={index}>
+        <SidebarMenuButton 
+          asChild 
+          isActive={isActive}
+          onMouseEnter={() => iconRef.current?.startAnimation()}
+          onMouseLeave={() => iconRef.current?.stopAnimation()}
+        >
+          <Link href={url} onClick={onClick}>
+            <Icon ref={iconRef} size={ICON_SIZE} className="shrink-0" />
+            <span>{title}</span>
+          </Link>
+        </SidebarMenuButton>
+      </NavItemMotion>
+    </SidebarMenuItem>
+  );
+}
 
 interface AppSidebarProps {
   userId?: string;
@@ -52,9 +87,6 @@ interface AppSidebarProps {
 export function AppSidebar({ userId, username }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  
-  // Get nav items with dynamic 'Me' URL to avoid redirect issues with AnimatePresence
-  const navItems = getNavItems(userId);
   
   // Check if a nav item should be marked as active
   const isActive = (url: string): boolean => {
@@ -69,6 +101,24 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
   const handleNavClick = () => {
     setOpenMobile(false);
   };
+
+  // Navigation items
+  const navItems = [
+    { title: 'Me', url: userId ? `/member/${userId}` : '/me', Icon: UserIcon },
+    { title: 'RDS', url: '/rds', Icon: BlocksIcon },
+    { title: 'OOO', url: '/ooo', Icon: CalendarDaysIcon },
+    { title: 'Tasks', url: '/tasks', Icon: ClipboardCheckIcon },
+    { title: 'Todos', url: '/todos', Icon: SquarePenIcon },
+    { title: 'Members', url: '/members', Icon: UsersIcon },
+  ];
+
+  const adminItems = [
+    { title: 'Settings', url: '/settings', Icon: SettingsIcon },
+  ];
+
+  const footerItems = [
+    { title: 'Help', url: '/help', Icon: CircleHelpIcon },
+  ];
 
   return (
     <Sidebar>
@@ -86,16 +136,15 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item, index) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavItemMotion index={index}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <Link href={item.url} onClick={handleNavClick}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </NavItemMotion>
-                </SidebarMenuItem>
+                <NavItem
+                  key={item.title}
+                  title={item.title}
+                  url={item.url}
+                  Icon={item.Icon}
+                  isActive={isActive(item.url)}
+                  onClick={handleNavClick}
+                  index={index}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -106,16 +155,15 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item, index) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavItemMotion index={index + navItems.length}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <Link href={item.url} onClick={handleNavClick}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </NavItemMotion>
-                </SidebarMenuItem>
+                <NavItem
+                  key={item.title}
+                  title={item.title}
+                  url={item.url}
+                  Icon={item.Icon}
+                  isActive={isActive(item.url)}
+                  onClick={handleNavClick}
+                  index={index + navItems.length}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -139,16 +187,15 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
         )}
         <SidebarMenu>
           {footerItems.map((item, index) => (
-            <SidebarMenuItem key={item.title}>
-              <NavItemMotion index={index + navItems.length + adminItems.length}>
-                <SidebarMenuButton asChild>
-                  <Link href={item.url} onClick={handleNavClick}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </NavItemMotion>
-            </SidebarMenuItem>
+            <NavItem
+              key={item.title}
+              title={item.title}
+              url={item.url}
+              Icon={item.Icon}
+              isActive={isActive(item.url)}
+              onClick={handleNavClick}
+              index={index + navItems.length + adminItems.length}
+            />
           ))}
         </SidebarMenu>
       </SidebarFooter>

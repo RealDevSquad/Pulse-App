@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, Sparkles, Bug, Zap, FileText, Wrench, HelpCircle, Github } from 'lucide-react';
 import { FolderOpenIcon } from '@/components/ui/folder-open';
 import Link from 'next/link';
+import { TaskDetailModal } from '@/components/task-detail-modal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
@@ -16,7 +18,7 @@ import {
 import { TableRowMotion } from '@/components/ui/motion';
 import { TaskActionsMenu } from '@/components/task-actions-menu';
 import { SkeletonPulse } from '@/components/ui/skeleton';
-import { getStatusBadgeStyle, formatRelativeTime, formatDueDate, getTaskTypeInfo, getPriorityInfo } from '@/lib/utils';
+import { getStatusBadgeStyle, formatRelativeTime, formatDueDate, getTaskTypeInfo, getPriorityInfo, isTaskUrgent, getTaskLatestActivity, isTaskUpdateStale } from '@/lib/utils';
 import type { TaskWithAssignee, TaskSortField, SortOrder, TaskStatusFilter } from '@/lib/tasks-cache';
 
 /** Task type icon component */
@@ -127,16 +129,16 @@ function SortableHeader({
   );
 }
 
-function ProgressBar({ percent }: { percent: number }) {
+function ProgressBar({ percent, isUrgent }: { percent: number; isUrgent?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-primary rounded-full transition-all"
+          className={`h-full rounded-full transition-all ${isUrgent ? 'bg-red-500' : 'bg-primary'}`}
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="text-xs text-muted-foreground font-medium tabular-nums">{percent}%</span>
+      <span className={`text-xs font-medium tabular-nums ${isUrgent ? 'text-red-600' : 'text-muted-foreground'}`}>{percent}%</span>
     </div>
   );
 }
@@ -151,14 +153,9 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       header: () => <SortableHeader label="Title" sortKey="title" filters={filters} />,
       size: 300,
       cell: ({ row }) => (
-        <a
-          href={`https://status.realdevsquad.com/tasks/${row.original.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold text-foreground line-clamp-2 hover:text-primary hover:underline transition-colors"
-        >
+        <span className="font-semibold text-foreground line-clamp-2">
           {row.original.title}
-        </a>
+        </span>
       ),
     },
     {
@@ -237,12 +234,9 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       cell: ({ row }) => {
         const info = getStatusBadgeStyle(row.original.status);
         return (
-          <Link 
-            href={`/task/${row.original.id}`}
-            className={info.className}
-          >
+          <span className={info.className}>
             {info.label}
-          </Link>
+          </span>
         );
       },
     },
@@ -258,8 +252,15 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
         }
         const isDone = status === 'COMPLETED' || status === 'DONE';
         const { text, isOverdue } = formatDueDate(row.original.endsOn, isDone);
+        const isUrgent = isTaskUrgent(row.original.status, row.original.endsOn);
         return (
-          <span className={isOverdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
+          <span className={
+            isOverdue 
+              ? 'text-red-600 font-semibold' 
+              : isUrgent 
+                ? 'text-orange-600 font-semibold' 
+                : 'text-muted-foreground'
+          }>
             {text}
           </span>
         );
@@ -271,15 +272,19 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
       header: () => <SortableHeader label="Updated" sortKey="updatedAt" filters={filters} />,
       size: 100,
       cell: ({ row }) => {
-        // Use latestActivityAt which includes progress updates, fallback to updatedAt
-        const time = formatRelativeTime(row.original.latestActivityAt || row.original.updatedAt || row.original.updated_at);
+        const latestActivity = getTaskLatestActivity(row.original);
+        const time = formatRelativeTime(latestActivity);
         const taskId = row.original.id;
+        const isStale = isTaskUpdateStale(row.original.status, latestActivity);
         return (
           <a
             href={`https://status.realdevsquad.com/tasks/${taskId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
+            className={isStale 
+              ? "text-orange-600 font-medium hover:text-orange-700 hover:underline transition-colors"
+              : "text-muted-foreground/70 hover:text-foreground hover:underline transition-colors"
+            }
           >
             {time}
           </a>
@@ -298,7 +303,8 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<TaskWit
           return <span className="text-muted-foreground/60">-</span>;
         }
         const percent = row.original.percentCompleted ?? 0;
-        return <ProgressBar percent={percent} />;
+        const isUrgent = isTaskUrgent(row.original.status, row.original.endsOn);
+        return <ProgressBar percent={percent} isUrgent={isUrgent} />;
       },
     },
     {
@@ -435,6 +441,9 @@ export function TasksTableSkeleton({ rows = 10 }: { rows?: number }) {
 }
 
 export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) {
+  const [selectedTask, setSelectedTask] = useState<TaskWithAssignee | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const columns = createColumns(filters, isRoot);
 
   const table = useReactTable({
@@ -446,7 +455,17 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
 
   const totalSize = table.getCenterTotalSize();
 
+  const handleRowClick = (task: TaskWithAssignee, e: React.MouseEvent) => {
+    // Don't open modal if clicking on a link, button, or interactive element
+    const target = e.target as HTMLElement;
+    if (target.closest('a') || target.closest('button')) return;
+    
+    setSelectedTask(task);
+    setIsModalOpen(true);
+  };
+
   return (
+    <>
     <div className="rounded-xl border bg-card shadow-sm overflow-auto">
       <Table style={{ width: '100%', minWidth: totalSize }}>
         <TableHeader>
@@ -481,7 +500,8 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
               <TableRowMotion 
                 key={row.id} 
                 index={index}
-                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={(e) => handleRowClick(row.original, e)}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="px-4 py-3">
@@ -503,5 +523,12 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
         </TableBody>
       </Table>
     </div>
+
+    <TaskDetailModal
+      task={selectedTask}
+      open={isModalOpen}
+      onOpenChange={setIsModalOpen}
+    />
+    </>
   );
 }

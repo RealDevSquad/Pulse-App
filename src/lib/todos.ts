@@ -60,37 +60,44 @@ export function getPriorityInfo(priority?: number | null): {
 export function getTodoStatusStyle(status?: string | null): {
   label: string;
   className: string;
+  dotColor: string;
 } {
   switch (status) {
     case 'TODO':
       return {
         label: 'Todo',
         className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+        dotColor: 'bg-slate-500',
       };
     case 'IN_PROGRESS':
       return {
         label: 'In Progress',
         className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        dotColor: 'bg-blue-500',
       };
     case 'BLOCKED':
       return {
         label: 'Blocked',
         className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        dotColor: 'bg-red-500',
       };
     case 'DEFERRED':
       return {
         label: 'Deferred',
         className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+        dotColor: 'bg-orange-500',
       };
     case 'DONE':
       return {
         label: 'Done',
         className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        dotColor: 'bg-green-500',
       };
     default:
       return {
         label: '-',
         className: 'bg-muted text-muted-foreground',
+        dotColor: 'bg-muted-foreground',
       };
   }
 }

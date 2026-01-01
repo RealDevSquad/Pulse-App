@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { db } from './firebase-admin';
+import { CACHE_REVALIDATE_SECONDS } from './cache-constants';
 import type { User } from '@/types';
 
 export type UserSortField = 'username' | 'first_name' | 'github_id' | 'created_at' | 'status';
@@ -71,7 +72,7 @@ export async function isActiveRDSMember(userId: string): Promise<boolean | null>
       }
     },
     [`rds-member-check-${userId}`],
-    { revalidate: 300 } // 5 minutes
+    { revalidate: CACHE_REVALIDATE_SECONDS }
   );
   
   return cachedCheck(userId);
