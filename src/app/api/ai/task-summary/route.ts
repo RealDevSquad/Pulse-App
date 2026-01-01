@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { isAIEnabled, hasAIAccess } from '@/lib/ai/config';
+import { isAIEnabled } from '@/lib/ai/config';
+import { isRootUser } from '@/lib/users';
 import { generateTaskSummary, generateTodoSummary } from '@/lib/ai/chains/task-summary';
 import type { Task, TodoAPI } from '@/types';
 
@@ -10,13 +11,13 @@ import type { Task, TodoAPI } from '@/types';
  * Generate an AI summary for a task or todo.
  * Returns a streaming SSE response.
  *
+ * AI features are only available to root users (superusers).
+ *
  * Request body:
  * - type: 'task' | 'todo'
  * - data: Task | TodoAPI.Todo
  * - assigneeName?: string (optional, for display)
  * - teamName?: string (optional, for todos)
- *
- * Access restricted to experimental users configured via EXPERIMENTAL_AI_USERS env var.
  */
 export async function POST(request: NextRequest) {
   // Check if AI is enabled
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check if user has AI access (experimental feature)
-  if (!hasAIAccess(session.userId, session.username)) {
+  // AI features require root access
+  if (!isRootUser(session.userId)) {
     return NextResponse.json({ error: 'AI features not available for this user' }, { status: 403 });
   }
 

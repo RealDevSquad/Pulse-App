@@ -4,7 +4,7 @@
  * Central export point for all AI-related functionality.
  */
 
-// Configuration and access control
+// Configuration
 export {
   AI_MODELS,
   FEATURE_MODELS,
@@ -13,8 +13,6 @@ export {
   MODEL_PARAMS,
   isAIEnabled,
   isStreamingEnabled,
-  getExperimentalAIUsers,
-  hasAIAccess,
 } from './config';
 
 // OpenRouter client

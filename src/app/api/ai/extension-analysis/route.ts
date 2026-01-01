@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { isAIEnabled, hasAIAccess } from '@/lib/ai/config';
+import { isAIEnabled } from '@/lib/ai/config';
+import { isRootUser } from '@/lib/users';
 import { generateExtensionAnalysis } from '@/lib/ai/chains/extension-analysis';
 
 /**
@@ -8,6 +9,8 @@ import { generateExtensionAnalysis } from '@/lib/ai/chains/extension-analysis';
  *
  * Generate an AI analysis of a user's task progress based on extension history.
  * Returns a streaming SSE response.
+ *
+ * AI features are only available to root users (superusers).
  *
  * Request body:
  * - task: { id, title, status, percentCompleted, assignee, endsOn, startedOn, createdAt }
@@ -26,8 +29,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check if user has AI access (experimental feature)
-  if (!hasAIAccess(session.userId, session.username)) {
+  // AI features require root access
+  if (!isRootUser(session.userId)) {
     return NextResponse.json({ error: 'AI features not available for this user' }, { status: 403 });
   }
 
