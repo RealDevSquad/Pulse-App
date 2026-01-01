@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Design resources
 Refactoring-UI-Package/
+
+# Manual scripts (local utilities, not for CI/CD)
+manual-scripts/

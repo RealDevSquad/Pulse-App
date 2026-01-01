@@ -8,6 +8,7 @@ import {
   Pencil, X, Check, Loader2, ChevronDown, PauseCircle, PlayCircle
 } from 'lucide-react';
 import { GoogleIcon } from '@/components/ui/google-icon';
+import { AISummaryCard } from '@/components/ai/ai-summary-card';
 import {
   Dialog,
   DialogContent,
@@ -819,10 +820,23 @@ export function TodoDetailModal({ todo, open, onOpenChange, teamsMap, onSave, on
                   )}
                 </motion.div>
 
+                {/* AI Summary */}
+                {!isEditing && (
+                  <motion.div variants={sectionVariants}>
+                    <AISummaryCard
+                      data={todo}
+                      type="todo"
+                      assigneeName={todo.assignee?.assignee_name || todo.assignee?.name}
+                      teamName={teamName || undefined}
+                      autoGenerate={true}
+                    />
+                  </motion.div>
+                )}
+
                 {/* Labels */}
                 {todo.labels && todo.labels.length > 0 && (
                   <motion.div variants={sectionVariants} className="space-y-2">
-                    <motion.div 
+                    <motion.div
                       variants={itemVariants}
                       className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground/70"
                     >

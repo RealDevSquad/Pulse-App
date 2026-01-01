@@ -234,6 +234,49 @@ export namespace Firestore {
     /** Date of the progress (ms since epoch) */
     date: number;
   }
+
+  /**
+   * Application document from `applicants` collection
+   * @collection applicants
+   */
+  export interface Application {
+    /** Firestore document ID */
+    id: string;
+    /** User ID in RDS system */
+    userId: string;
+    /** Applicant's personal info */
+    biodata: {
+      firstName: string;
+      lastName: string;
+    };
+    /** Location info */
+    location: {
+      city: string;
+      state: string;
+      country: string;
+    };
+    /** Professional background */
+    professional: {
+      institution: string;
+      skills: string;
+    };
+    /** Introduction and motivations */
+    intro: {
+      introduction: string;
+      funFact: string;
+      forFun: string;
+      whyRds: string;
+      numberOfHours: number;
+    };
+    /** How they found RDS */
+    foundFrom: string;
+    /** Application status */
+    status: 'pending' | 'accepted' | 'rejected';
+    /** ISO date string */
+    createdAt: string;
+    /** Feedback on the application (optional) */
+    feedback?: string;
+  }
 }
 
 // =============================================================================
@@ -246,8 +289,10 @@ export type UserStatus = Firestore.UserStatus;
 export type Task = Firestore.Task;
 export type TaskUpdate = Firestore.TaskUpdate;
 export type Progress = Firestore.Progress;
+export type Application = Firestore.Application;
 export type TaskStatus = Firestore.Task['status'];
 export type OOOStatus = Firestore.OOORequest['status'];
+export type ApplicationStatus = Firestore.Application['status'];
 
 // =============================================================================
 // TODO API Types (from todo-backend service)

@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { getStatusBadgeStyle, formatDueDate, getTaskTypeInfo, getPriorityInfo, isTaskUrgent } from '@/lib/utils';
+import { AIExtensionAnalysis } from '@/components/ai/ai-extension-analysis';
 import type { TaskWithAssignee } from '@/lib/tasks-cache';
 
 // =============================================================================
@@ -175,6 +176,7 @@ function ExtensionCard({ ext, showUser = false }: { ext: ExtensionRequest; showU
 export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalProps) {
   const [extensionsData, setExtensionsData] = useState<ExtensionsData | null>(null);
   const [isLoadingExtensions, setIsLoadingExtensions] = useState(false);
+  const [showExtensions, setShowExtensions] = useState(false);
   const [showPastExtensions, setShowPastExtensions] = useState(false);
 
   // Fetch extensions for the task from our Firestore-backed API
@@ -204,15 +206,25 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     }
   }, []);
 
-  // Fetch extensions when task changes
+  // Reset state when task changes (don't fetch until expanded)
   useEffect(() => {
     if (task?.id && open) {
-      fetchExtensions(task.id, task.assignee);
-      setShowPastExtensions(false); // Reset collapse state
-    } else {
+      setShowExtensions(false);
+      setShowPastExtensions(false);
       setExtensionsData(null);
     }
-  }, [task?.id, task?.assignee, open, fetchExtensions]);
+  }, [task?.id, open]);
+
+  // Handle extensions toggle - fetch on first expand
+  const handleToggleExtensions = () => {
+    const newShowExtensions = !showExtensions;
+    setShowExtensions(newShowExtensions);
+    
+    // Fetch extensions on first expand
+    if (newShowExtensions && !extensionsData && task?.id) {
+      fetchExtensions(task.id, task.assignee);
+    }
+  };
 
   if (!task) return null;
 
@@ -326,7 +338,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                       <span>{task.percentCompleted}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className={cn(
                           "h-full rounded-full transition-all",
                           isUrgent ? "bg-red-500" : "bg-primary"
@@ -366,68 +378,106 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                 <Separator />
 
                 {/* Extension Requests Section */}
-                <motion.div variants={itemVariants} className="space-y-3">
-                  <div className="flex items-center gap-2">
+                <motion.div variants={itemVariants} className="space-y-2">
+                  {/* Collapsible header */}
+                  <button
+                    onClick={handleToggleExtensions}
+                    className="flex items-center gap-2 text-sm hover:text-foreground transition-colors w-full py-1"
+                  >
+                    {showExtensions ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                     <Timer className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-medium">Extension Requests</h3>
+                    <span className="font-medium">Extension Requests</span>
                     {isLoadingExtensions && (
                       <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                     )}
-                  </div>
+                    {extensionsData && (
+                      <span className="text-muted-foreground">
+                        ({extensionsData.totalCount})
+                      </span>
+                    )}
+                  </button>
 
-                  {/* No extensions message */}
-                  {hasNoExtensions && (
-                    <p className="text-sm text-muted-foreground py-2">
-                      No extension requests for this task.
-                    </p>
-                  )}
-
-                  {/* Current assignee extensions */}
-                  {hasCurrentExtensions && (
-                    <div className="space-y-2">
-                      {currentExtensions.map((ext) => (
-                        <ExtensionCard key={ext.id} ext={ext} showUser={false} />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Past extensions from other users */}
-                  {hasPastExtensions && (
-                    <div className="space-y-2">
-                      {/* Collapsible header */}
-                      <button
-                        onClick={() => setShowPastExtensions(!showPastExtensions)}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-1"
+                  {/* Collapsible content */}
+                  <AnimatePresence>
+                    {showExtensions && (
+                      <motion.div
+                        variants={collapseVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        className="space-y-3 overflow-hidden pl-6"
                       >
-                        {showPastExtensions ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
+                        {/* AI Analysis of extensions - shown at top */}
+                        {extensionsData && (hasCurrentExtensions || hasPastExtensions) && (
+                          <AIExtensionAnalysis
+                            task={task}
+                            extensions={[...currentExtensions, ...pastExtensions]}
+                            assigneeName={task.assigneeUser ? `${task.assigneeUser.first_name} ${task.assigneeUser.last_name}` : undefined}
+                            className="mb-3"
+                          />
                         )}
-                        <History className="h-3.5 w-3.5" />
-                        <span>
-                          Past extensions from other assignees ({pastExtensions.length})
-                        </span>
-                      </button>
 
-                      {/* Collapsible content */}
-                      <AnimatePresence>
-                        {showPastExtensions && (
-                          <motion.div
-                            variants={collapseVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="hidden"
-                            className="space-y-2 overflow-hidden"
-                          >
-                            {pastExtensions.map((ext) => (
-                              <ExtensionCard key={ext.id} ext={ext} showUser={true} />
-                            ))}
-                          </motion.div>
+                        {/* No extensions message */}
+                        {hasNoExtensions && (
+                          <p className="text-sm text-muted-foreground py-2">
+                            No extension requests for this task.
+                          </p>
                         )}
-                      </AnimatePresence>
-                    </div>
-                  )}
+
+                        {/* Current assignee extensions */}
+                        {hasCurrentExtensions && (
+                          <div className="space-y-2">
+                            {currentExtensions.map((ext) => (
+                              <ExtensionCard key={ext.id} ext={ext} showUser={false} />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Past extensions from other users */}
+                        {hasPastExtensions && (
+                          <div className="space-y-2">
+                            {/* Collapsible header for past */}
+                            <button
+                              onClick={() => setShowPastExtensions(!showPastExtensions)}
+                              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-1"
+                            >
+                              {showPastExtensions ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                              <History className="h-3.5 w-3.5" />
+                              <span>
+                                Past extensions from other assignees ({pastExtensions.length})
+                              </span>
+                            </button>
+
+                            {/* Collapsible content for past */}
+                            <AnimatePresence>
+                              {showPastExtensions && (
+                                <motion.div
+                                  variants={collapseVariants}
+                                  initial="hidden"
+                                  animate="visible"
+                                  exit="hidden"
+                                  className="space-y-2 overflow-hidden"
+                                >
+                                  {pastExtensions.map((ext) => (
+                                    <ExtensionCard key={ext.id} ext={ext} showUser={true} />
+                                  ))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               </div>
             </motion.div>

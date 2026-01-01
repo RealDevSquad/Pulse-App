@@ -28,6 +28,7 @@ import { SquarePenIcon, type SquarePenIconHandle } from '@/components/ui/square-
 import { UsersIcon, type UsersIconHandle } from '@/components/ui/users';
 import { SettingsIcon, type SettingsIconHandle } from '@/components/ui/settings';
 import { CircleHelpIcon, type CircleHelpIconHandle } from '@/components/ui/circle-help';
+import { FileTextIcon, type FileTextIconHandle } from '@/components/ui/file-text';
 
 // Icon size
 const ICON_SIZE = 18;
@@ -41,12 +42,13 @@ type IconHandle =
   | SquarePenIconHandle 
   | UsersIconHandle 
   | SettingsIconHandle 
-  | CircleHelpIconHandle;
+  | CircleHelpIconHandle
+  | FileTextIconHandle;
 
 // Icon component type
 type IconComponent = typeof UserIcon | typeof BlocksIcon | typeof CalendarDaysIcon | 
   typeof ClipboardCheckIcon | typeof SquarePenIcon | typeof UsersIcon | 
-  typeof SettingsIcon | typeof CircleHelpIcon;
+  typeof SettingsIcon | typeof CircleHelpIcon | typeof FileTextIcon;
 
 interface NavItemProps {
   title: string;
@@ -82,9 +84,10 @@ function NavItem({ title, url, Icon, isActive, onClick, index }: NavItemProps) {
 interface AppSidebarProps {
   userId?: string;
   username?: string;
+  isRoot?: boolean;
 }
 
-export function AppSidebar({ userId, username }: AppSidebarProps) {
+export function AppSidebar({ userId, username, isRoot = false }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   
@@ -112,7 +115,9 @@ export function AppSidebar({ userId, username }: AppSidebarProps) {
     { title: 'Members', url: '/members', Icon: UsersIcon },
   ];
 
+  // Admin items - only Applications for superusers
   const adminItems = [
+    ...(isRoot ? [{ title: 'Applications', url: '/applications', Icon: FileTextIcon }] : []),
     { title: 'Settings', url: '/settings', Icon: SettingsIcon },
   ];
 

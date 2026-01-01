@@ -82,10 +82,10 @@ This helps visualize the implementation without running the app.
 
 ## Running Scripts
 
-Scripts in `scripts/` directory should be run with:
+Scripts in `manual-scripts/` directory should be run with:
 
 ```bash
-pnpm exec tsx scripts/<script-name>.ts
+pnpm exec tsx manual-scripts/<script-name>.ts
 ```
 
 **Note:** `ts-node` doesn't work reliably due to ESM/CJS issues. Use `tsx` instead.
@@ -93,4 +93,4 @@ pnpm exec tsx scripts/<script-name>.ts
 Scripts must:
 - Load env vars manually from `.env.local` (no dotenv package)
 - Initialize Firebase Admin directly (can't import from `@/lib` due to path resolution)
-- See `scripts/find-bad-tasks.ts` for reference implementation
+- See `manual-scripts/find-bad-tasks.ts` for reference implementation
