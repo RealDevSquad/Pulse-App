@@ -570,7 +570,7 @@ export default async function MemberPage({ params }: PageProps) {
   const { id } = await params;
 
   // Root check for conditional UI (Member Info section)
-  const isRoot = isRootUser(session.userId);
+  const isRoot = await isRootUser(session.userId);
 
   // Fetch user data from cache
   const user = await getCachedUser(id);

@@ -23,30 +23,63 @@ export interface GetUsersResult {
 }
 
 // Access control:
-// - Admin: Read-only dashboard access
-// - Root: Admin access + Write access (full access)
-const ROOT_USER_IDS = ['XAF7rSUvk4p0d098qWYS'];
-const ADMIN_USER_IDS: string[] = [];
+// - Admin: Any user with roles.super_user === true in Firestore
+// - Root: Admin + specifically Ankush's user ID (extra safety for destructive operations)
+const ANKUSH_USER_ID = 'XAF7rSUvk4p0d098qWYS';
 
 /**
- * Check if a userId is an admin user (read-only dashboard access)
+ * Check if a user has super_user role in Firestore.
+ * This is used for admin access checks.
+ * Cached to avoid hitting Firestore on every check.
  */
-export function isAdminUser(userId: string): boolean {
-  return ADMIN_USER_IDS.includes(userId);
+async function checkSuperUserRole(userId: string): Promise<boolean> {
+  const cachedCheck = unstable_cache(
+    async (uid: string) => {
+      try {
+        const userDoc = await db.collection('users').doc(uid).get();
+        
+        if (!userDoc.exists) {
+          return false;
+        }
+        
+        const userData = userDoc.data();
+        return userData?.roles?.super_user === true;
+      } catch (error) {
+        console.error('Error checking super_user role:', error);
+        return false;
+      }
+    },
+    [`super-user-check-${userId}`],
+    { revalidate: CACHE_REVALIDATE_SECONDS }
+  );
+  
+  return cachedCheck(userId);
 }
 
 /**
- * Check if a userId is a root user (admin access + write access)
+ * Check if a userId is an admin user (any super_user in Firestore).
+ * Admins have access to admin features like Task Requests, Extension Requests.
  */
-export function isRootUser(userId: string): boolean {
-  return ROOT_USER_IDS.includes(userId);
+export async function isAdminUser(userId: string): Promise<boolean> {
+  return checkSuperUserRole(userId);
 }
 
 /**
- * Check if a userId is allowed to access the dashboard (admin or root)
+ * Check if a userId is a root user (super_user AND Ankush's specific ID).
+ * Root users have access to the most sensitive features like Applications.
  */
-export function isUserAllowed(userId: string): boolean {
-  return isAdminUser(userId) || isRootUser(userId);
+export async function isRootUser(userId: string): Promise<boolean> {
+  if (userId !== ANKUSH_USER_ID) {
+    return false;
+  }
+  return checkSuperUserRole(userId);
+}
+
+/**
+ * Check if a userId is allowed to access admin features (same as isAdmin for now)
+ */
+export async function isUserAllowed(userId: string): Promise<boolean> {
+  return isAdminUser(userId);
 }
 
 /**
@@ -79,19 +112,20 @@ export async function isActiveRDSMember(userId: string): Promise<boolean | null>
 }
 
 export type AccessCheckResult = 
-  | { allowed: true; isRoot: boolean }
+  | { allowed: true; isRoot: boolean; isAdmin: boolean }
   | { allowed: false; reason: 'not_logged_in' | 'not_rds_member' | 'not_authorized' };
 
 /**
  * Check if a user has access to the dashboard.
- * Returns access status and whether the user is root.
+ * Returns access status, whether the user is root, and whether the user is admin.
  * 
  * Access hierarchy:
  * 1. Must be logged in (have a session)
  * 2. Must be an active RDS member (non-archived)
  * 
  * Any authenticated, non-archived RDS member can access protected pages.
- * Root users get additional write permissions.
+ * Admin users (super_user in Firestore) get access to admin features.
+ * Root users (Ankush + super_user) get additional write permissions.
  */
 export async function checkDashboardAccess(userId: string | undefined): Promise<AccessCheckResult> {
   // Check 1: Must be logged in
@@ -105,7 +139,13 @@ export async function checkDashboardAccess(userId: string | undefined): Promise<
     return { allowed: false, reason: 'not_rds_member' };
   }
 
-  return { allowed: true, isRoot: isRootUser(userId) };
+  // Check admin and root status in parallel
+  const [isAdmin, isRoot] = await Promise.all([
+    isAdminUser(userId),
+    isRootUser(userId),
+  ]);
+
+  return { allowed: true, isRoot, isAdmin };
 }
 
 /**

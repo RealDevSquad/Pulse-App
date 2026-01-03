@@ -480,3 +480,172 @@ export namespace TodoAPI {
 export type Todo = TodoAPI.Todo;
 export type TodoStatus = TodoAPI.Status;
 export type TodoPriority = TodoAPI.Priority;
+
+// =============================================================================
+// Task Requests API Types
+// Base URL: https://api.realdevsquad.com/taskRequests
+// =============================================================================
+
+export namespace TaskRequestAPI {
+  /** Task request status */
+  export type RequestStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'WAITING';
+
+  /** Task request type */
+  export type RequestType = 'ASSIGNMENT' | 'CREATION';
+
+  /** User who requested the task */
+  export interface TaskRequestUser {
+    /** User ID */
+    userId: string;
+    /** Individual status for this user's request */
+    status: 'PENDING' | 'APPROVED';
+    /** Proposed start date (epoch ms) */
+    proposedStartDate: number;
+    /** Proposed deadline (epoch ms) */
+    proposedDeadline: number;
+    /** User's proposal description */
+    description?: string;
+    /** Whether markdown is enabled in description */
+    markdownEnabled?: boolean;
+    /** When the user requested (epoch ms) */
+    requestedAt?: number;
+  }
+
+  /** Enriched user info (populated by API) */
+  export interface EnrichedTaskRequestUser extends TaskRequestUser {
+    /** Username */
+    username?: string;
+    /** First name */
+    first_name?: string;
+    /** Last name */
+    last_name?: string;
+    /** Profile picture URL */
+    picture?: string;
+  }
+
+  /** Task request document */
+  export interface TaskRequest {
+    /** Document ID */
+    id: string;
+    /** Task ID (for ASSIGNMENT requests) */
+    taskId?: string;
+    /** Task or GitHub issue title */
+    taskTitle: string;
+    /** GitHub API URL (for CREATION requests) */
+    externalIssueUrl?: string;
+    /** GitHub web URL (for CREATION requests) */
+    externalIssueHtmlUrl?: string;
+    /** Request type */
+    requestType: RequestType;
+    /** Overall request status */
+    status: RequestStatus;
+    /** List of users who requested this task */
+    users: EnrichedTaskRequestUser[];
+    /** Number of requestors */
+    usersCount: number;
+    /** Legacy: array of user IDs */
+    requestors?: string[];
+    /** User ID of approved user (when status is APPROVED) */
+    approvedTo?: string;
+    /** Creation timestamp (epoch ms) */
+    createdAt: number;
+    /** Creator user ID */
+    createdBy: string;
+    /** Last modification timestamp (epoch ms) */
+    lastModifiedAt: number;
+    /** Last modifier user ID */
+    lastModifiedBy: string;
+    /** Full URL to this task request */
+    url?: string;
+  }
+
+  /** GET /taskRequests response */
+  export interface GetTaskRequestsResponse {
+    message: string;
+    data: TaskRequest[];
+    next?: string;
+    prev?: string;
+  }
+
+  /** GET /taskRequests/:id response */
+  export interface GetTaskRequestResponse {
+    message: string;
+    data: TaskRequest;
+  }
+}
+
+// Convenience exports for Task Requests
+export type TaskRequest = TaskRequestAPI.TaskRequest;
+export type TaskRequestUser = TaskRequestAPI.EnrichedTaskRequestUser;
+export type TaskRequestStatus = TaskRequestAPI.RequestStatus;
+export type TaskRequestType = TaskRequestAPI.RequestType;
+
+// =============================================================================
+// Extension Requests API Types
+// Base URL: https://api.realdevsquad.com/extension-requests
+// =============================================================================
+
+export namespace ExtensionRequestAPI {
+  /** Extension request status */
+  export type Status = 'PENDING' | 'APPROVED' | 'DENIED';
+
+  /** Extension request document */
+  export interface ExtensionRequest {
+    /** Document ID */
+    id: string;
+    /** Associated task ID */
+    taskId: string;
+    /** Task title */
+    title?: string;
+    /** Assignee user ID (legacy field) */
+    assignee: string;
+    /** Assignee user ID */
+    assigneeId?: string;
+    /** Current deadline (epoch seconds) */
+    oldEndsOn: number;
+    /** Requested new deadline (epoch seconds) */
+    newEndsOn: number;
+    /** Reason for extension */
+    reason: string;
+    /** Request status */
+    status: Status;
+    /** Nth extension request by this user for this task */
+    requestNumber?: number;
+    /** Creation timestamp (epoch seconds) */
+    timestamp?: number;
+    /** Reviewer name (populated when approved/denied) */
+    reviewedBy?: string;
+    /** Review timestamp (epoch seconds) */
+    reviewedAt?: number;
+  }
+
+  /** Enriched extension request with user info */
+  export interface EnrichedExtensionRequest extends ExtensionRequest {
+    /** Assignee user info */
+    assigneeUser?: {
+      id: string;
+      username: string;
+      first_name: string;
+      last_name: string;
+      picture?: { url: string };
+    };
+  }
+
+  /** GET /extension-requests response */
+  export interface GetExtensionRequestsResponse {
+    message: string;
+    allExtensionRequests: ExtensionRequest[];
+    next?: string;
+  }
+
+  /** GET /extension-requests/:id response */
+  export interface GetExtensionRequestResponse {
+    message: string;
+    extensionRequest: ExtensionRequest;
+  }
+}
+
+// Convenience exports for Extension Requests
+export type ExtensionRequest = ExtensionRequestAPI.ExtensionRequest;
+export type EnrichedExtensionRequest = ExtensionRequestAPI.EnrichedExtensionRequest;
+export type ExtensionRequestStatus = ExtensionRequestAPI.Status;

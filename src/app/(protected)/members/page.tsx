@@ -102,7 +102,7 @@ function formatLastActive(timestamp?: number): string {
 export default async function MembersPage({ searchParams }: PageProps) {
   // Access is already checked in layout - session is guaranteed
   const session = (await getSession())!;
-  const isRoot = isRootUser(session.userId);
+  const isRoot = await isRootUser(session.userId);
   const params = await searchParams;
 
   const page = Math.max(1, parseInt(params.page || '1', 10));

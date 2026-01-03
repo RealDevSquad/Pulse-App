@@ -31,9 +31,9 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
 }
 
 export default async function ApplicationsPage({ searchParams }: PageProps) {
-  // Access check: only superusers can view applications
+  // Access check: only root users can view applications
   const session = await getSession();
-  if (!session?.userId || !isRootUser(session.userId)) {
+  if (!session?.userId || !(await isRootUser(session.userId))) {
     redirect('/');
   }
 

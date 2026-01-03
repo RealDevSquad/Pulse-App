@@ -48,7 +48,7 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
 export default async function TasksPage({ searchParams }: PageProps) {
   // Access is already checked in layout
   const session = await getSession();
-  const isRoot = session?.userId ? isRootUser(session.userId) : false;
+  const isRoot = session?.userId ? await isRootUser(session.userId) : false;
   const params = await searchParams;
 
   const tab: TaskTab = params.tab === 'overdue' ? 'overdue' : 'current';

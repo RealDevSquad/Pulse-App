@@ -85,9 +85,10 @@ interface AppSidebarProps {
   userId?: string;
   username?: string;
   isRoot?: boolean;
+  isAdmin?: boolean;
 }
 
-export function AppSidebar({ userId, username, isRoot = false }: AppSidebarProps) {
+export function AppSidebar({ userId, username, isRoot = false, isAdmin = false }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   
@@ -115,8 +116,12 @@ export function AppSidebar({ userId, username, isRoot = false }: AppSidebarProps
     { title: 'Members', url: '/members', Icon: UsersIcon },
   ];
 
-  // Admin items - only Applications for superusers
+  // Admin items - Task Requests & Extension Requests for admins, Applications for root only
   const adminItems = [
+    ...(isAdmin ? [
+      { title: 'Task Requests', url: '/task-requests', Icon: ClipboardCheckIcon },
+      { title: 'Extension Requests', url: '/extension-requests', Icon: CalendarDaysIcon },
+    ] : []),
     ...(isRoot ? [{ title: 'Applications', url: '/applications', Icon: FileTextIcon }] : []),
     { title: 'Settings', url: '/settings', Icon: SettingsIcon },
   ];
