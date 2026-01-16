@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ExternalLink, Github, Calendar, TrendingUp, Timer,
+  ExternalLink, Github, Calendar, TrendingUp, Timer, MessageSquare,
   CheckCircle2, XCircle, AlertCircle, Loader2, ChevronDown, ChevronRight, History
 } from 'lucide-react';
 import {
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { getStatusBadgeStyle, formatDueDate, getTaskTypeInfo, getPriorityInfo, isTaskUrgent } from '@/lib/utils';
 import { AIExtensionAnalysis } from '@/components/ai/ai-extension-analysis';
+import { AIProgressAnalysis } from '@/components/ai/ai-progress-analysis';
 import type { TaskWithAssignee } from '@/lib/tasks-cache';
 
 // =============================================================================
@@ -51,6 +52,24 @@ interface ExtensionRequest {
 interface ExtensionsData {
   currentAssigneeExtensions: ExtensionRequest[];
   pastAssigneeExtensions: ExtensionRequest[];
+  totalCount: number;
+}
+
+interface ProgressUpdate {
+  id: string;
+  taskId: string;
+  userId: string;
+  user?: UserInfo;
+  type: string;
+  completed: string;
+  planned: string;
+  blockers: string;
+  createdAt: number;
+  date: number;
+}
+
+interface ProgressData {
+  progressUpdates: ProgressUpdate[];
   totalCount: number;
 }
 
@@ -170,10 +189,74 @@ function ExtensionCard({ ext, showUser = false }: { ext: ExtensionRequest; showU
 }
 
 // =============================================================================
+// Progress Card Component
+// =============================================================================
+
+function ProgressCard({ progress }: { progress: ProgressUpdate }) {
+  const hasBlockers = progress.blockers?.trim();
+  
+  return (
+    <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+      {/* Date and user */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {progress.user && (
+            <>
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={progress.user.picture?.url} alt={progress.user.username} />
+                <AvatarFallback className="text-[10px]">
+                  {progress.user.first_name?.[0]}{progress.user.last_name?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs font-medium">
+                {progress.user.first_name} {progress.user.last_name}
+              </span>
+            </>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {formatEpoch(progress.createdAt)}
+        </span>
+      </div>
+      
+      {/* Completed */}
+      {progress.completed?.trim() && (
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium text-green-600 dark:text-green-400">Completed</p>
+          <p className="text-sm text-muted-foreground">{progress.completed}</p>
+        </div>
+      )}
+      
+      {/* Planned */}
+      {progress.planned?.trim() && (
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Planned</p>
+          <p className="text-sm text-muted-foreground">{progress.planned}</p>
+        </div>
+      )}
+      
+      {/* Blockers */}
+      {hasBlockers && (
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium text-red-600 dark:text-red-400">Blockers</p>
+          <p className="text-sm text-muted-foreground">{progress.blockers}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
 export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalProps) {
+  // Progress state
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
+  
+  // Extensions state
   const [extensionsData, setExtensionsData] = useState<ExtensionsData | null>(null);
   const [isLoadingExtensions, setIsLoadingExtensions] = useState(false);
   const [showExtensions, setShowExtensions] = useState(false);
@@ -206,14 +289,50 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     }
   }, []);
 
+  // Fetch progress updates for the task
+  const fetchProgress = useCallback(async (taskId: string) => {
+    setIsLoadingProgress(true);
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/progress`);
+      if (response.ok) {
+        const data = await response.json();
+        setProgressData({
+          progressUpdates: data.progressUpdates || [],
+          totalCount: data.totalCount || 0,
+        });
+      } else {
+        console.log('Progress fetch returned:', response.status);
+        setProgressData(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch progress:', error);
+      setProgressData(null);
+    } finally {
+      setIsLoadingProgress(false);
+    }
+  }, []);
+
   // Reset state when task changes (don't fetch until expanded)
   useEffect(() => {
     if (task?.id && open) {
+      setShowProgress(false);
+      setProgressData(null);
       setShowExtensions(false);
       setShowPastExtensions(false);
       setExtensionsData(null);
     }
   }, [task?.id, open]);
+
+  // Handle progress toggle - fetch on first expand
+  const handleToggleProgress = () => {
+    const newShowProgress = !showProgress;
+    setShowProgress(newShowProgress);
+    
+    // Fetch progress on first expand
+    if (newShowProgress && !progressData && task?.id) {
+      fetchProgress(task.id);
+    }
+  };
 
   // Handle extensions toggle - fetch on first expand
   const handleToggleExtensions = () => {
@@ -235,6 +354,12 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
   const dueDate = task.endsOn ? formatDueDate(task.endsOn, isDone) : null;
   const isUrgent = isTaskUrgent(task.status, task.endsOn);
 
+  // Progress data
+  const progressUpdates = progressData?.progressUpdates || [];
+  const hasProgress = progressUpdates.length > 0;
+  const hasNoProgress = !isLoadingProgress && !hasProgress;
+
+  // Extensions data
   const currentExtensions = extensionsData?.currentAssigneeExtensions || [];
   const pastExtensions = extensionsData?.pastAssigneeExtensions || [];
   const hasPastExtensions = pastExtensions.length > 0;
@@ -376,6 +501,70 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                 </motion.div>
 
                 <Separator />
+
+                {/* Progress Updates Section */}
+                <motion.div variants={itemVariants} className="space-y-2">
+                  {/* Collapsible header */}
+                  <button
+                    onClick={handleToggleProgress}
+                    className="flex items-center gap-2 text-sm hover:text-foreground transition-colors w-full py-1"
+                  >
+                    {showProgress ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Progress Updates</span>
+                    {isLoadingProgress && (
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    )}
+                    {progressData && (
+                      <span className="text-muted-foreground">
+                        ({progressData.totalCount})
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Collapsible content */}
+                  <AnimatePresence>
+                    {showProgress && (
+                      <motion.div
+                        variants={collapseVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        className="space-y-3 overflow-hidden pl-6"
+                      >
+                        {/* AI Analysis of progress - shown at top */}
+                        {progressData && hasProgress && (
+                          <AIProgressAnalysis
+                            task={task}
+                            progressUpdates={progressUpdates}
+                            assigneeName={task.assigneeUser ? `${task.assigneeUser.first_name} ${task.assigneeUser.last_name}` : undefined}
+                            className="mb-3"
+                          />
+                        )}
+
+                        {/* No progress message */}
+                        {hasNoProgress && (
+                          <p className="text-sm text-muted-foreground py-2">
+                            No progress updates for this task.
+                          </p>
+                        )}
+
+                        {/* Progress updates list */}
+                        {hasProgress && (
+                          <div className="space-y-2">
+                            {progressUpdates.map((progress) => (
+                              <ProgressCard key={progress.id} progress={progress} />
+                            ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
 
                 {/* Extension Requests Section */}
                 <motion.div variants={itemVariants} className="space-y-2">
