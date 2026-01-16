@@ -2,11 +2,27 @@
 
 import { useState, useCallback, useRef } from 'react';
 
+/**
+ * Usage statistics from the AI model
+ */
+export interface AIUsageStats {
+  /** Model used for generation */
+  model: string;
+  /** Estimated input tokens */
+  inputTokens: number;
+  /** Estimated output tokens */
+  outputTokens: number;
+  /** Total tokens (input + output) */
+  totalTokens: number;
+  /** Estimated cost in USD */
+  cost: number;
+}
+
 interface UseAIStreamOptions {
   /** API endpoint to call */
   endpoint: string;
   /** Callback when streaming completes successfully */
-  onComplete?: (result: string) => void;
+  onComplete?: (result: string, usage?: AIUsageStats) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
 }
@@ -20,6 +36,8 @@ interface UseAIStreamReturn {
   isLoading: boolean;
   /** Error if any */
   error: Error | null;
+  /** Usage statistics (available after stream completes) */
+  usage: AIUsageStats | null;
   /** Reset the state */
   reset: () => void;
   /** Abort current stream */
@@ -31,9 +49,9 @@ interface UseAIStreamReturn {
  *
  * @example
  * ```tsx
- * const { startStream, content, isLoading } = useAIStream({
+ * const { startStream, content, isLoading, usage } = useAIStream({
  *   endpoint: '/api/ai/task-summary',
- *   onComplete: (result) => console.log('Done:', result),
+ *   onComplete: (result, usage) => console.log('Done:', result, usage),
  * });
  *
  * // Start streaming
@@ -41,6 +59,9 @@ interface UseAIStreamReturn {
  *
  * // Display content as it streams
  * <p>{content}</p>
+ * 
+ * // Show usage after completion
+ * {usage && <span>{usage.totalTokens} tokens (~${usage.cost.toFixed(4)})</span>}
  * ```
  */
 export function useAIStream({
@@ -51,6 +72,7 @@ export function useAIStream({
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [usage, setUsage] = useState<AIUsageStats | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -58,6 +80,7 @@ export function useAIStream({
     setContent('');
     setError(null);
     setIsLoading(false);
+    setUsage(null);
   }, []);
 
   const abort = useCallback(() => {
@@ -79,6 +102,7 @@ export function useAIStream({
       setContent('');
       setError(null);
       setIsLoading(true);
+      setUsage(null);
 
       // Create new abort controller
       abortControllerRef.current = new AbortController();
@@ -105,6 +129,7 @@ export function useAIStream({
 
         const decoder = new TextDecoder();
         let fullContent = '';
+        let usageStats: AIUsageStats | null = null;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -135,9 +160,16 @@ export function useAIStream({
                   throw new Error(parsed.error);
                 }
 
+                // Handle content chunks
                 if (parsed.content) {
                   fullContent += parsed.content;
                   setContent(fullContent);
+                }
+
+                // Handle usage stats (sent at end of stream)
+                if (parsed.usage) {
+                  usageStats = parsed.usage;
+                  setUsage(usageStats);
                 }
               } catch (parseError) {
                 // Skip malformed chunks
@@ -151,7 +183,7 @@ export function useAIStream({
         }
 
         setIsLoading(false);
-        onComplete?.(fullContent);
+        onComplete?.(fullContent, usageStats || undefined);
       } catch (err) {
         // Ignore abort errors
         if (err instanceof Error && err.name === 'AbortError') {
@@ -172,6 +204,7 @@ export function useAIStream({
     content,
     isLoading,
     error,
+    usage,
     reset,
     abort,
   };

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { isAIEnabled } from '@/lib/ai/config';
+import { isAIEnabled, estimateTokens, calculateCost, AI_MODELS } from '@/lib/ai/config';
 import { isRootUser } from '@/lib/users';
 import { generateExtensionAnalysis } from '@/lib/ai/chains/extension-analysis';
 
@@ -8,7 +8,7 @@ import { generateExtensionAnalysis } from '@/lib/ai/chains/extension-analysis';
  * POST /api/ai/extension-analysis
  *
  * Generate an AI analysis of a user's task progress based on extension history.
- * Returns a streaming SSE response.
+ * Returns a streaming SSE response with usage stats at the end.
  *
  * AI features are only available to root users (superusers).
  *
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   }
 
   // AI features require root access
-  if (!isRootUser(session.userId)) {
+  if (!(await isRootUser(session.userId))) {
     return NextResponse.json({ error: 'AI features not available for this user' }, { status: 403 });
   }
 
@@ -42,6 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required field: task' }, { status: 400 });
     }
 
+    // Estimate input tokens from the request data
+    const inputText = JSON.stringify({ task, extensions, assigneeName });
+    const inputTokens = estimateTokens(inputText);
+
     // Generate the analysis stream
     const stream = await generateExtensionAnalysis({
       task,
@@ -49,15 +53,38 @@ export async function POST(request: NextRequest) {
       assigneeName,
     });
 
+    // Model used for this feature
+    const model = AI_MODELS.FAST;
+
     // Create SSE stream
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
+        let outputText = '';
+        
         try {
           for await (const chunk of stream) {
+            outputText += chunk;
             const sseMessage = `data: ${JSON.stringify({ content: chunk })}\n\n`;
             controller.enqueue(encoder.encode(sseMessage));
           }
+
+          // Calculate usage stats
+          const outputTokens = estimateTokens(outputText);
+          const totalTokens = inputTokens + outputTokens;
+          const cost = calculateCost(model, inputTokens, outputTokens);
+
+          // Send usage stats before [DONE]
+          const usageMessage = `data: ${JSON.stringify({
+            usage: {
+              model,
+              inputTokens,
+              outputTokens,
+              totalTokens,
+              cost,
+            },
+          })}\n\n`;
+          controller.enqueue(encoder.encode(usageMessage));
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();

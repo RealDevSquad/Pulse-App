@@ -49,6 +49,40 @@ export const MODEL_PARAMS = {
   streaming: true,
 } as const;
 
+// Model pricing (per 1M tokens) - from OpenRouter
+// Updated: Jan 2025
+export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'anthropic/claude-3-haiku': { input: 0.25, output: 1.25 },
+  'anthropic/claude-3.5-sonnet': { input: 3.0, output: 15.0 },
+  'anthropic/claude-3-opus': { input: 15.0, output: 75.0 },
+  'openai/gpt-3.5-turbo': { input: 0.5, output: 1.5 },
+  'openai/gpt-4-turbo': { input: 10.0, output: 30.0 },
+  'google/gemini-2.0-flash-001': { input: 0.1, output: 0.4 },
+} as const;
+
+/**
+ * Calculate cost for a given model and token counts
+ * @returns Cost in USD
+ */
+export function calculateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const pricing = MODEL_PRICING[model] || { input: 0.5, output: 1.5 }; // Default fallback
+  const inputCost = (inputTokens / 1_000_000) * pricing.input;
+  const outputCost = (outputTokens / 1_000_000) * pricing.output;
+  return inputCost + outputCost;
+}
+
+/**
+ * Estimate token count from text (rough approximation)
+ * ~4 characters per token for English text
+ */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
 // Feature flags
 export function isAIEnabled(): boolean {
   return process.env.FEATURE_AI_ENABLED !== 'false';
