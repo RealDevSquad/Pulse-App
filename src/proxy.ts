@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify, importSPKI } from 'jose';
+import { jwtVerify, importSPKI, errors as joseErrors } from 'jose';
 
-async function verifyToken(token: string): Promise<boolean> {
+/**
+ * JWT verification result
+ */
+type VerifyResult = 
+  | { valid: true }
+  | { valid: false; reason: 'expired' | 'invalid' | 'malformed' | 'config_error' };
+
+/**
+ * Verify JWT token and return structured result
+ */
+async function verifyToken(token: string): Promise<VerifyResult> {
   const publicKeyPem = process.env.JWT_PUBLIC_KEY;
 
   if (!publicKeyPem) {
     console.error('JWT_PUBLIC_KEY not set');
-    return false;
+    return { valid: false, reason: 'config_error' };
   }
 
   try {
@@ -15,10 +25,36 @@ async function verifyToken(token: string): Promise<boolean> {
     // Use scripts/convert-key.ts to convert RSA PUBLIC KEY to SPKI
     const key = await importSPKI(publicKeyPem, 'RS256');
     await jwtVerify(token, key);
-    return true;
+    return { valid: true };
   } catch (e) {
-    console.error('Token verification failed:', e);
-    return false;
+    // Handle specific JWT errors
+    if (e instanceof joseErrors.JWTExpired) {
+      // Token has expired - user needs to re-login
+      console.info('JWT expired for request');
+      return { valid: false, reason: 'expired' };
+    }
+    
+    if (e instanceof joseErrors.JWTClaimValidationFailed) {
+      // Token claims validation failed (nbf, iat, etc.)
+      console.warn('JWT claim validation failed:', e.claim, e.reason);
+      return { valid: false, reason: 'invalid' };
+    }
+    
+    if (e instanceof joseErrors.JWSSignatureVerificationFailed) {
+      // Signature doesn't match - token was tampered with or wrong key
+      console.warn('JWT signature verification failed');
+      return { valid: false, reason: 'invalid' };
+    }
+    
+    if (e instanceof joseErrors.JWTInvalid) {
+      // Token format is invalid
+      console.warn('JWT format invalid:', e.message);
+      return { valid: false, reason: 'malformed' };
+    }
+
+    // Unknown error - log full details
+    console.error('Token verification failed with unexpected error:', e);
+    return { valid: false, reason: 'invalid' };
   }
 }
 
@@ -42,16 +78,34 @@ export async function proxy(request: NextRequest) {
     if (!pathname.startsWith('/api/')) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', code: 'NO_TOKEN' }, { status: 401 });
   }
 
-  const isValid = await verifyToken(token);
+  const result = await verifyToken(token);
 
-  if (!isValid) {
+  if (!result.valid) {
+    // For browser requests, redirect to login
     if (!pathname.startsWith('/api/')) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      const loginUrl = new URL('/login', request.url);
+      
+      // Add reason as query param so login page can show appropriate message
+      if (result.reason === 'expired') {
+        loginUrl.searchParams.set('reason', 'session_expired');
+      }
+      
+      return NextResponse.redirect(loginUrl);
     }
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    
+    // For API requests, return appropriate error
+    const errorMessages: Record<string, { message: string; code: string }> = {
+      expired: { message: 'Session expired. Please login again.', code: 'TOKEN_EXPIRED' },
+      invalid: { message: 'Invalid token', code: 'TOKEN_INVALID' },
+      malformed: { message: 'Malformed token', code: 'TOKEN_MALFORMED' },
+      config_error: { message: 'Server configuration error', code: 'CONFIG_ERROR' },
+    };
+    
+    const { message, code } = errorMessages[result.reason];
+    return NextResponse.json({ error: message, code }, { status: 401 });
   }
 
   return NextResponse.next();
