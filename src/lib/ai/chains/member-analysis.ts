@@ -97,6 +97,12 @@ export interface MemberAnalysisInput {
   enrichmentEvents: MemberEnrichmentEvent[];
   /** Extension request enrichments (optional for backwards compatibility) */
   extensionEnrichments?: ExtensionEnrichmentEvent[];
+  /**
+   * When the user actually became active (first task activity).
+   * More accurate than created_at for tenure calculation.
+   * Falls back to created_at if not provided.
+   */
+  activeSince?: number;
 }
 
 /**
@@ -265,7 +271,7 @@ function formatFlags(flags?: Flags): string {
  * Generate a streaming member performance analysis
  */
 export async function generateMemberAnalysis(input: MemberAnalysisInput) {
-  const { user, metrics, multiPeriodMetrics, activeTasks, enrichmentEvents, extensionEnrichments } = input;
+  const { user, metrics, multiPeriodMetrics, activeTasks, enrichmentEvents, extensionEnrichments, activeSince } = input;
 
   // Use BALANCED model for more comprehensive analysis
   const llm = createOpenRouterClient({
@@ -291,12 +297,15 @@ export async function generateMemberAnalysis(input: MemberAnalysisInput) {
   const initiativeMetrics = metrics.initiativeMetrics;
   const timelineMetrics = metrics.timelineMetrics;
 
+  // Use activeSince (first task activity) for tenure, more accurate than created_at
+  const tenureTimestamp = activeSince || user.created_at;
+
   return chain.stream({
     memberName,
     username: user.username,
     roles: formatRoles(user.roles),
-    memberSince: user.created_at ? formatDate(user.created_at) : 'Unknown',
-    tenure: user.created_at ? calculateTenure(user.created_at) : 'Unknown',
+    memberSince: tenureTimestamp ? formatDate(tenureTimestamp) : 'Unknown',
+    tenure: tenureTimestamp ? calculateTenure(tenureTimestamp) : 'Unknown',
     currentStatus: getUserStatus(user.status),
     tasksAssigned: metrics.tasksAssigned,
     tasksStarted: metrics.tasksStarted,

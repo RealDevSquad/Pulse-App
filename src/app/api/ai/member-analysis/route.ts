@@ -373,6 +373,35 @@ function detectFlags(
 const META_TYPE = 'member_enrichment';
 
 /**
+ * Find when a user actually became active (finished onboarding).
+ * Uses logs to find their first task activity.
+ * Returns timestamp in ms, or null if no activity found.
+ */
+async function getUserActiveSince(userId: string): Promise<number | null> {
+  // Look for user's first task-related activity log
+  // This is more accurate than created_at since users may create accounts
+  // but not actively participate until later
+  const snapshot = await db
+    .collection('logs')
+    .where('meta.userId', '==', userId)
+    .where('type', '==', 'task')
+    .orderBy('timestamp', 'asc')
+    .limit(1)
+    .get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const firstLog = snapshot.docs[0].data();
+  // Normalize Firestore timestamp
+  if (firstLog.timestamp?._seconds) {
+    return firstLog.timestamp._seconds * 1000;
+  }
+  return firstLog.timestamp || null;
+}
+
+/**
  * POST /api/ai/member-analysis
  *
  * Generate an AI-powered performance analysis for a member.
@@ -416,7 +445,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch data in parallel
     // Enrichment query uses unified field structure: meta.type + targetId + timestamp
-    const [activeTasks, logsMetrics, multiPeriodMetrics, enrichmentSnapshot, extensionMetrics, progressSummary, initiativeMetrics] = await Promise.all([
+    const [activeTasks, logsMetrics, multiPeriodMetrics, enrichmentSnapshot, extensionMetrics, progressSummary, initiativeMetrics, activeSince] = await Promise.all([
       getFreshUserTasks(userId),
       getUserActivityFromLogs(userId),
       getUserMultiPeriodMetrics(userId),
@@ -430,6 +459,7 @@ export async function POST(request: NextRequest) {
       getExtensionMetrics(userId),
       getProgressSummary(userId),
       getInitiativeMetrics(userId),
+      getUserActiveSince(userId),
     ]);
 
     // Fetch extension enrichments using unified index (query by targetId = extensionId)
@@ -503,6 +533,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Generate the analysis stream
+    // Use activeSince (first task activity) for tenure, fall back to created_at
     const stream = await generateMemberAnalysis({
       user,
       metrics,
@@ -510,6 +541,7 @@ export async function POST(request: NextRequest) {
       activeTasks,
       enrichmentEvents,
       extensionEnrichments,
+      activeSince: activeSince ?? user.created_at,
     });
 
     // Create SSE stream
