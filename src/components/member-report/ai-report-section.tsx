@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   Lightbulb,
   Activity,
+  Code,
+  Eye,
 } from 'lucide-react';
 
 interface AIReportSectionProps {
@@ -113,6 +115,7 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   const sections = useMemo(() => {
     if (!report) return [];
@@ -196,10 +199,29 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
             AI Performance Analysis
           </CardTitle>
           {hasGenerated && !isGenerating && (
-            <Button variant="outline" size="sm" onClick={generateReport}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Regenerate
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRaw(!showRaw)}
+              >
+                {showRaw ? (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Show Formatted
+                  </>
+                ) : (
+                  <>
+                    <Code className="h-4 w-4 mr-1" />
+                    Show Raw
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" size="sm" onClick={generateReport}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Regenerate
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -242,8 +264,15 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
               </div>
             )}
 
-            {/* Executive Summary - Hero Section */}
-            {executiveSummary && (
+            {/* Raw output view */}
+            {showRaw && !isGenerating && (
+              <div className="rounded-lg border bg-muted/30 p-4 overflow-auto">
+                <pre className="text-xs font-mono whitespace-pre-wrap break-words">{report}</pre>
+              </div>
+            )}
+
+            {/* Formatted view - Executive Summary - Hero Section */}
+            {!showRaw && executiveSummary && (
               <div className="rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-4 sm:p-6">
                 <div className="flex items-start gap-3 mb-3">
                   <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
@@ -260,7 +289,7 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
             )}
 
             {/* Other Sections - Always Open Cards */}
-            {otherSections.map((section, index) => {
+            {!showRaw && otherSections.map((section, index) => {
               const Icon = section.icon || Activity;
               const isTrendSection = section.title.toLowerCase().includes('trend');
               const isRiskSection = section.title.toLowerCase().includes('risk');
