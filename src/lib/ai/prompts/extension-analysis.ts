@@ -39,13 +39,16 @@ Total extensions requested: {totalExtensions}
 Approved: {approvedCount}
 Denied: {deniedCount}
 Pending: {pendingCount}
+**Late extensions:** {lateExtensionCount} (requested AFTER task was already past deadline)
 
 **Extension Details:**
 {extensionDetails}
 
+IMPORTANT: "Late extensions" are extensions requested AFTER the deadline had already passed (task was "red"). This is a communication concern - the developer should have asked for help BEFORE the deadline, not after. If lateExtensionCount > 0, this should be flagged as a coaching opportunity for proactive communication.
+
 Provide a 2-3 sentence analysis covering:
 1. How the developer is progressing (considering extensions)
-2. Any patterns or concerns (multiple extensions, short intervals, etc.)
+2. Any patterns or concerns (multiple extensions, short intervals, late requests after deadline)
 3. A constructive suggestion or encouragement
 
 Be supportive but honest.`;

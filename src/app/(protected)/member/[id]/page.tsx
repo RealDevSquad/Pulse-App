@@ -1,12 +1,12 @@
 import { unstable_cache } from 'next/cache';
 import { getSession } from '@/lib/auth';
-import { isRootUser } from '@/lib/users';
+import { isRootUser, isAdminUser } from '@/lib/users';
 import { db } from '@/lib/firebase-admin';
 import { getFreshUserTasks } from '@/lib/tasks-cache';
 import { getUserActivityFromLogs } from '@/lib/logs-cache';
 import { getUserOOOEntries } from '@/lib/ooo-cache';
 import { cacheUserActivity, fetchMemberActivityForCache } from '@/lib/users-cache';
-import { ArrowLeft, Github, Twitter, Linkedin, Globe, Mail, Phone, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Github, Twitter, Linkedin, Globe, Mail, Phone, TrendingUp, Clock, AlertTriangle, ChevronDown, FileText, Sparkles } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -565,15 +565,18 @@ function getStatusBadge(status?: string) {
 }
 
 export default async function MemberPage({ params }: PageProps) {
-  // Access is already checked in layout
-  const session = (await getSession())!;
-  const { id } = await params;
+  // Fetch session and params in parallel
+  const [session, { id }] = await Promise.all([
+    getSession(),
+    params,
+  ]);
 
-  // Root check for conditional UI (Member Info section)
-  const isRoot = await isRootUser(session.userId);
-
-  // Fetch user data from cache
-  const user = await getCachedUser(id);
+  // Fetch access levels and user data in parallel
+  const [isAdmin, isRoot, user] = await Promise.all([
+    isAdminUser(session!.userId),
+    isRootUser(session!.userId),
+    getCachedUser(id),
+  ]);
   
   if (!user) {
     return (
@@ -614,13 +617,33 @@ export default async function MemberPage({ params }: PageProps) {
 
   return (
     <div className="space-y-3 sm:space-y-6">
-      {/* Back button */}
-      <Button variant="ghost" size="sm" asChild>
-        <Link href="/members">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Members
-        </Link>
-      </Button>
+      {/* Navigation and Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/members">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Members
+          </Link>
+        </Button>
+
+        {/* Admin (super_user) actions */}
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/member/${id}/enrich`}>
+                <Sparkles className="h-4 w-4 mr-1" />
+                Enrich
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/member/${id}/report`}>
+                <FileText className="h-4 w-4 mr-1" />
+                Report
+              </Link>
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Profile Header */}
       <div className="flex items-center gap-4">

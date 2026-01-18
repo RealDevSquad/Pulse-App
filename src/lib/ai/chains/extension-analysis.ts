@@ -112,6 +112,16 @@ export async function generateExtensionAnalysis(input: ExtensionAnalysisInput) {
   const deniedCount = extensions.filter((e) => e.status === 'DENIED').length;
   const pendingCount = extensions.filter((e) => e.status === 'PENDING').length;
 
+  // Count late extensions (requested AFTER deadline had already passed)
+  // This indicates lack of proactive communication
+  const lateExtensionCount = extensions.filter((ext) => {
+    const requestedAt = ext.timestamp?._seconds
+      ? ext.timestamp._seconds * 1000
+      : (ext.createdAt || 0);
+    const oldDeadline = ext.oldEndsOn > 1e12 ? ext.oldEndsOn : ext.oldEndsOn * 1000;
+    return requestedAt > oldDeadline;
+  }).length;
+
   // Find original due date
   const originalDueDate = findOriginalDueDate(extensions) || task.endsOn;
 
@@ -131,6 +141,7 @@ export async function generateExtensionAnalysis(input: ExtensionAnalysisInput) {
     approvedCount,
     deniedCount,
     pendingCount,
+    lateExtensionCount,
     extensionDetails: formatExtensionDetails(extensions),
   });
 }
