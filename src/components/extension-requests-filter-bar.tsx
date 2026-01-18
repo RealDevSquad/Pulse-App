@@ -9,11 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { UserAutocomplete } from '@/components/user-autocomplete';
 import type { ExtensionRequestStatus } from '@/types';
 
 interface FilterState {
   status: ExtensionRequestStatus | 'all';
   sortOrder: 'asc' | 'desc';
+  assignee?: string;
 }
 
 interface ExtensionRequestsFilterBarProps {
@@ -27,10 +29,14 @@ export function ExtensionRequestsFilterBar({ filters, counts }: ExtensionRequest
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const updateFilter = (key: keyof FilterState, value: string) => {
+  const updateFilter = (key: string, value: string | null) => {
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set(key, value);
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
       // Reset cursor on filter change
       params.delete('cursor');
       router.push(`${pathname}?${params.toString()}`);
@@ -76,6 +82,15 @@ export function ExtensionRequestsFilterBar({ filters, counts }: ExtensionRequest
           <SelectItem value="asc">Oldest first</SelectItem>
         </SelectContent>
       </Select>
+
+      {/* User Filter */}
+      <UserAutocomplete
+        value={filters.assignee}
+        onSelect={(user) => updateFilter('assignee', user?.id || null)}
+        placeholder="Filter by user..."
+        className="w-[200px]"
+        disabled={isPending}
+      />
     </div>
   );
 }

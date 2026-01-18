@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { ArrowRight, Calendar, User, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonPulse } from '@/components/ui/skeleton';
 import { ExtensionRequestDetailModal } from '@/components/extension-request-detail-modal';
+import { ExtensionEnrichmentInline } from '@/components/extension-enrichment-badge';
 import { cn } from '@/lib/utils';
 import type { ExtensionRequestWithUser } from '@/lib/extension-requests-cache';
+import type { ExtensionEnrichmentEvent } from '@/lib/extension-enrichment-types';
 
 // =============================================================================
 // Helper Functions
@@ -86,15 +88,45 @@ function getInitials(firstName?: string, lastName?: string, username?: string): 
 
 interface ExtensionRequestsMobileCardsProps {
   extensionRequests: ExtensionRequestWithUser[];
+  /** Whether the current user is an admin */
+  isAdmin?: boolean;
 }
 
-export function ExtensionRequestsMobileCards({ extensionRequests }: ExtensionRequestsMobileCardsProps) {
+export function ExtensionRequestsMobileCards({
+  extensionRequests,
+  isAdmin = false,
+}: ExtensionRequestsMobileCardsProps) {
   const [selectedRequest, setSelectedRequest] = useState<ExtensionRequestWithUser | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [enrichments, setEnrichments] = useState<Record<string, ExtensionEnrichmentEvent>>({});
+
+  // Fetch enrichments for all visible extension requests
+  useEffect(() => {
+    if (extensionRequests.length === 0) return;
+
+    const extensionIds = extensionRequests.map((er) => er.id).join(',');
+    fetch(`/api/extension-enrichment?extensionIds=${extensionIds}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enrichments) {
+          setEnrichments(data.enrichments);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch extension enrichments:', err);
+      });
+  }, [extensionRequests]);
 
   const handleCardClick = (request: ExtensionRequestWithUser) => {
     setSelectedRequest(request);
     setIsModalOpen(true);
+  };
+
+  const handleEnrichmentUpdated = (extensionId: string, enrichment: ExtensionEnrichmentEvent) => {
+    setEnrichments((prev) => ({
+      ...prev,
+      [extensionId]: enrichment,
+    }));
   };
 
   if (extensionRequests.length === 0) {
@@ -165,6 +197,9 @@ export function ExtensionRequestsMobileCards({ extensionRequests }: ExtensionReq
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
+
+                {/* Enrichment Status */}
+                <ExtensionEnrichmentInline enrichment={enrichments[request.id]} />
               </CardContent>
             </Card>
           );
@@ -175,6 +210,8 @@ export function ExtensionRequestsMobileCards({ extensionRequests }: ExtensionReq
         extensionRequest={selectedRequest}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+        isAdmin={isAdmin}
+        onEnrichmentUpdated={handleEnrichmentUpdated}
       />
     </>
   );

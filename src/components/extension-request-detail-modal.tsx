@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { format, differenceInDays } from 'date-fns';
 import { ExternalLink, Calendar, User, Clock, FileText } from 'lucide-react';
 import {
@@ -15,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import type { ExtensionRequestWithUser } from '@/lib/extension-requests-cache';
+import { ExtensionEnrichmentDisplay } from './extension-enrichment-display';
+import type { ExtensionEnrichmentEvent, AutoComputedFlags } from '@/lib/extension-enrichment-types';
 
 // =============================================================================
 // Helper Functions
@@ -80,17 +83,65 @@ interface ExtensionRequestDetailModalProps {
   extensionRequest: ExtensionRequestWithUser | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Whether the current user is an admin */
+  isAdmin?: boolean;
+  /** Callback when enrichment is updated */
+  onEnrichmentUpdated?: (extensionId: string, enrichment: ExtensionEnrichmentEvent) => void;
 }
 
 export function ExtensionRequestDetailModal({
   extensionRequest,
   open,
   onOpenChange,
+  isAdmin = false,
+  onEnrichmentUpdated,
 }: ExtensionRequestDetailModalProps) {
+  const [enrichment, setEnrichment] = useState<ExtensionEnrichmentEvent | null>(null);
+  const [isLoadingEnrichment, setIsLoadingEnrichment] = useState(false);
+
+  // Fetch enrichment data when modal opens
+  useEffect(() => {
+    if (open && extensionRequest?.id) {
+      setIsLoadingEnrichment(true);
+      fetch(`/api/extension-enrichment?extensionId=${extensionRequest.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setEnrichment(data.enrichment || null);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch extension enrichment:', err);
+          setEnrichment(null);
+        })
+        .finally(() => {
+          setIsLoadingEnrichment(false);
+        });
+    }
+  }, [open, extensionRequest?.id]);
+
+  // Reset enrichment when modal closes
+  useEffect(() => {
+    if (!open) {
+      setEnrichment(null);
+    }
+  }, [open]);
+
   if (!extensionRequest) return null;
 
   const daysDiff = getDaysDiff(extensionRequest.oldEndsOn, extensionRequest.newEndsOn);
   const user = extensionRequest.assigneeUser;
+
+  // Pre-compute some flags for the enrichment dialog
+  const preComputedFlags: Partial<AutoComputedFlags> = {
+    sameTaskRepeat: (extensionRequest.requestNumber || 1) > 1,
+    significantDelay: daysDiff > 7,
+  };
+
+  const handleEnrichmentSaved = (newEnrichment: ExtensionEnrichmentEvent) => {
+    setEnrichment(newEnrichment);
+    if (onEnrichmentUpdated) {
+      onEnrichmentUpdated(extensionRequest.id, newEnrichment);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,6 +257,30 @@ export function ExtensionRequestDetailModal({
               )}
             </div>
           </>
+        )}
+
+        <Separator />
+
+        {/* Enrichment Analysis */}
+        {!isLoadingEnrichment && (
+          <ExtensionEnrichmentDisplay
+            enrichment={enrichment}
+            extensionId={extensionRequest.id}
+            taskId={extensionRequest.taskId}
+            userId={extensionRequest.assignee}
+            taskTitle={extensionRequest.taskTitle || extensionRequest.title || 'Unknown Task'}
+            assigneeName={
+              user?.first_name && user?.last_name
+                ? `${user.first_name} ${user.last_name}`
+                : user?.username
+            }
+            oldEndsOn={extensionRequest.oldEndsOn}
+            newEndsOn={extensionRequest.newEndsOn}
+            reason={extensionRequest.reason}
+            preComputedFlags={preComputedFlags}
+            isAdmin={isAdmin}
+            onEnrichmentUpdated={handleEnrichmentSaved}
+          />
         )}
 
         <Separator />

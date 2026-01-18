@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import { getSession } from '@/lib/auth';
 import { isAdminUser } from '@/lib/users';
 import { fetchExtensionRequests, getExtensionRequestCounts } from '@/lib/extension-requests-cache';
@@ -15,6 +15,7 @@ interface PageProps {
     status?: string;
     sortOrder?: string;
     cursor?: string;
+    assignee?: string;
   }>;
 }
 
@@ -23,16 +24,20 @@ const ITEMS_PER_PAGE = 20;
 interface FilterState {
   status: ExtensionRequestStatus | 'all';
   sortOrder: 'asc' | 'desc';
+  assignee?: string;
 }
 
 export default async function ExtensionRequestsPage({ searchParams }: PageProps) {
+  // Fetch session and params in parallel
+  const [session, params] = await Promise.all([
+    getSession(),
+    searchParams,
+  ]);
+
   // Access check: only admins can view extension requests
-  const session = await getSession();
   if (!session?.userId || !(await isAdminUser(session.userId))) {
     redirect('/');
   }
-
-  const params = await searchParams;
 
   // Parse filter params
   const status = (['all', 'PENDING', 'APPROVED', 'DENIED'].includes(params.status || '')
@@ -44,14 +49,16 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
     : 'desc') as 'asc' | 'desc';
 
   const cursor = params.cursor;
+  const assignee = params.assignee;
 
-  const filters: FilterState = { status, sortOrder };
+  const filters: FilterState = { status, sortOrder, assignee };
 
   // Fetch extension requests and counts
   const [result, counts] = await Promise.all([
     fetchExtensionRequests({
       status,
       sortOrder,
+      assignee,
       size: ITEMS_PER_PAGE,
       cursor,
     }),
@@ -65,13 +72,22 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          Extension Requests
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          {total} {total === 1 ? 'request' : 'requests'} found
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Extension Requests
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            {total} {total === 1 ? 'request' : 'requests'} found
+          </p>
+        </div>
+        <Button variant="outline" size="sm" asChild className="shrink-0">
+          <Link href="/extension-requests/bulk-enrich">
+            <ListChecks className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Bulk Enrich</span>
+            <span className="sm:hidden">Enrich</span>
+          </Link>
+        </Button>
       </div>
 
       {/* Filter Bar */}
@@ -79,12 +95,12 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
 
       {/* Desktop Table */}
       <div className="hidden md:block">
-        <ExtensionRequestsTable extensionRequests={extensionRequests} />
+        <ExtensionRequestsTable extensionRequests={extensionRequests} isAdmin />
       </div>
 
       {/* Mobile Card View */}
       <div className="md:hidden">
-        <ExtensionRequestsMobileCards extensionRequests={extensionRequests} />
+        <ExtensionRequestsMobileCards extensionRequests={extensionRequests} isAdmin />
       </div>
 
       {/* Pagination */}
@@ -102,7 +118,7 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
                 className="h-10"
               >
                 <Link
-                  href={`/extension-requests?status=${status}&sortOrder=${sortOrder}`}
+                  href={`/extension-requests?status=${status}&sortOrder=${sortOrder}${assignee ? `&assignee=${assignee}` : ''}`}
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">First</span>
@@ -117,7 +133,7 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
                 className="h-10"
               >
                 <Link
-                  href={`/extension-requests?status=${status}&sortOrder=${sortOrder}&cursor=${next}`}
+                  href={`/extension-requests?status=${status}&sortOrder=${sortOrder}${assignee ? `&assignee=${assignee}` : ''}&cursor=${next}`}
                 >
                   <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="h-4 w-4 ml-1" />

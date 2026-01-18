@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,8 +21,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonPulse } from '@/components/ui/skeleton';
 import { ExtensionRequestDetailModal } from '@/components/extension-request-detail-modal';
+import { ExtensionEnrichmentBadge } from '@/components/extension-enrichment-badge';
 import { cn } from '@/lib/utils';
 import type { ExtensionRequestWithUser } from '@/lib/extension-requests-cache';
+import type { ExtensionEnrichmentEvent } from '@/lib/extension-enrichment-types';
 
 // =============================================================================
 // Helper Functions
@@ -100,93 +102,137 @@ function getInitials(firstName?: string, lastName?: string, username?: string): 
 
 interface ExtensionRequestsTableProps {
   extensionRequests: ExtensionRequestWithUser[];
+  /** Whether the current user is an admin */
+  isAdmin?: boolean;
 }
 
-export function ExtensionRequestsTable({ extensionRequests }: ExtensionRequestsTableProps) {
+export function ExtensionRequestsTable({
+  extensionRequests,
+  isAdmin = false,
+}: ExtensionRequestsTableProps) {
   const [selectedRequest, setSelectedRequest] = useState<ExtensionRequestWithUser | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [enrichments, setEnrichments] = useState<Record<string, ExtensionEnrichmentEvent>>({});
+
+  // Fetch enrichments for all visible extension requests
+  useEffect(() => {
+    if (extensionRequests.length === 0) return;
+
+    const extensionIds = extensionRequests.map((er) => er.id).join(',');
+    fetch(`/api/extension-enrichment?extensionIds=${extensionIds}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enrichments) {
+          setEnrichments(data.enrichments);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch extension enrichments:', err);
+      });
+  }, [extensionRequests]);
 
   const handleRowClick = (request: ExtensionRequestWithUser) => {
     setSelectedRequest(request);
     setIsModalOpen(true);
   };
 
-  const columns: ColumnDef<ExtensionRequestWithUser>[] = [
-    {
-      id: 'task',
-      header: 'Task',
-      size: 250,
-      cell: ({ row }) => (
-        <span className="font-medium line-clamp-1">
-          {row.original.taskTitle || row.original.title || 'Unknown Task'}
-        </span>
-      ),
-    },
-    {
-      id: 'assignee',
-      header: 'Assignee',
-      size: 180,
-      cell: ({ row }) => {
-        const user = row.original.assigneeUser;
-        return (
-          <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={user?.picture?.url} />
-              <AvatarFallback className="text-xs">
-                {getInitials(user?.first_name, user?.last_name, user?.username)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm truncate">
-              {user?.first_name && user?.last_name
-                ? `${user.first_name} ${user.last_name}`
-                : user?.username || 'Unknown'}
-            </span>
-          </div>
-        );
+  const handleEnrichmentUpdated = (extensionId: string, enrichment: ExtensionEnrichmentEvent) => {
+    setEnrichments((prev) => ({
+      ...prev,
+      [extensionId]: enrichment,
+    }));
+  };
+
+  const columns: ColumnDef<ExtensionRequestWithUser>[] = useMemo(
+    () => [
+      {
+        id: 'task',
+        header: 'Task',
+        size: 220,
+        cell: ({ row }) => (
+          <span className="font-medium line-clamp-1">
+            {row.original.taskTitle || row.original.title || 'Unknown Task'}
+          </span>
+        ),
       },
-    },
-    {
-      id: 'dates',
-      header: 'ETA Change',
-      size: 200,
-      cell: ({ row }) => {
-        const { oldEndsOn, newEndsOn } = row.original;
-        const daysDiff = getDaysDiff(oldEndsOn, newEndsOn);
-        return (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">{formatDate(oldEndsOn)}</span>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-            <span className="font-medium">{formatDate(newEndsOn)}</span>
-            {daysDiff > 0 && (
-              <span className="text-xs text-orange-600 dark:text-orange-400">
-                +{daysDiff}d
+      {
+        id: 'assignee',
+        header: 'Assignee',
+        size: 160,
+        cell: ({ row }) => {
+          const user = row.original.assigneeUser;
+          return (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={user?.picture?.url} />
+                <AvatarFallback className="text-xs">
+                  {getInitials(user?.first_name, user?.last_name, user?.username)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm truncate">
+                {user?.first_name && user?.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user?.username || 'Unknown'}
               </span>
-            )}
-          </div>
-        );
+            </div>
+          );
+        },
       },
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      size: 100,
-      cell: ({ row }) => (
-        <Badge className={cn('text-xs', getStatusStyle(row.original.status))}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      id: 'created',
-      header: 'Created',
-      size: 100,
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {formatRelativeTime(row.original.timestamp)}
-        </span>
-      ),
-    },
-  ];
+      {
+        id: 'dates',
+        header: 'ETA Change',
+        size: 180,
+        cell: ({ row }) => {
+          const { oldEndsOn, newEndsOn } = row.original;
+          const daysDiff = getDaysDiff(oldEndsOn, newEndsOn);
+          return (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">{formatDate(oldEndsOn)}</span>
+              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+              <span className="font-medium">{formatDate(newEndsOn)}</span>
+              {daysDiff > 0 && (
+                <span className="text-xs text-orange-600 dark:text-orange-400">
+                  +{daysDiff}d
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'enrichment',
+        header: 'Enriched',
+        size: 50,
+        cell: ({ row }) => (
+          <ExtensionEnrichmentBadge
+            enrichment={enrichments[row.original.id]}
+            compact
+          />
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        size: 100,
+        cell: ({ row }) => (
+          <Badge className={cn('text-xs', getStatusStyle(row.original.status))}>
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        id: 'created',
+        header: 'Created',
+        size: 100,
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatRelativeTime(row.original.timestamp)}
+          </span>
+        ),
+      },
+    ],
+    [enrichments]
+  );
 
   const table = useReactTable({
     data: extensionRequests,
@@ -253,6 +299,8 @@ export function ExtensionRequestsTable({ extensionRequests }: ExtensionRequestsT
         extensionRequest={selectedRequest}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+        isAdmin={isAdmin}
+        onEnrichmentUpdated={handleEnrichmentUpdated}
       />
     </>
   );
@@ -268,9 +316,10 @@ export function ExtensionRequestsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead style={{ width: 250 }}>Task</TableHead>
-            <TableHead style={{ width: 180 }}>Assignee</TableHead>
-            <TableHead style={{ width: 200 }}>ETA Change</TableHead>
+            <TableHead style={{ width: 220 }}>Task</TableHead>
+            <TableHead style={{ width: 160 }}>Assignee</TableHead>
+            <TableHead style={{ width: 180 }}>ETA Change</TableHead>
+            <TableHead style={{ width: 50 }}>Enriched</TableHead>
             <TableHead style={{ width: 100 }}>Status</TableHead>
             <TableHead style={{ width: 100 }}>Created</TableHead>
           </TableRow>
@@ -292,6 +341,7 @@ export function ExtensionRequestsTableSkeleton() {
                   <SkeletonPulse className="h-4 w-16" />
                 </div>
               </TableCell>
+              <TableCell><SkeletonPulse className="h-4 w-4 rounded-full" /></TableCell>
               <TableCell><SkeletonPulse className="h-6 w-16 rounded-full" /></TableCell>
               <TableCell><SkeletonPulse className="h-4 w-16" /></TableCell>
             </TableRow>
