@@ -73,6 +73,7 @@ interface TasksTableProps {
   tasks: TaskWithAssignee[];
   filters: FilterState;
   isRoot?: boolean;
+  isAdmin?: boolean;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -440,7 +441,7 @@ export function TasksTableSkeleton({ rows = 10 }: { rows?: number }) {
   );
 }
 
-export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) {
+export function TasksTable({ tasks, filters, isRoot = false, isAdmin = false }: TasksTableProps) {
   const [selectedTask, setSelectedTask] = useState<TaskWithAssignee | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -528,6 +529,7 @@ export function TasksTable({ tasks, filters, isRoot = false }: TasksTableProps) 
       task={selectedTask}
       open={isModalOpen}
       onOpenChange={setIsModalOpen}
+      isAdmin={isAdmin}
     />
     </>
   );

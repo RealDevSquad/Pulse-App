@@ -19,16 +19,18 @@ interface TasksContentProps {
   tasks: TaskWithAssignee[];
   filters: FilterState;
   isRoot: boolean;
+  isAdmin?: boolean;
   activeTab: TaskTab;
   isOverdueTab?: boolean;
   /** Whether to show filter bar (hidden on overdue tab) */
   showFilters?: boolean;
 }
 
-export function TasksContent({ 
-  tasks, 
-  filters, 
-  isRoot, 
+export function TasksContent({
+  tasks,
+  filters,
+  isRoot,
+  isAdmin = false,
   activeTab,
   isOverdueTab = false,
   showFilters = true,
@@ -55,7 +57,7 @@ export function TasksContent({
         {isLoading ? (
           <TasksTableSkeleton />
         ) : (
-          <TasksTable tasks={tasks} filters={filters} isRoot={isRoot} />
+          <TasksTable tasks={tasks} filters={filters} isRoot={isRoot} isAdmin={isAdmin} />
         )}
       </div>
 
@@ -64,7 +66,7 @@ export function TasksContent({
         {isLoading ? (
           <TasksMobileCardsSkeleton />
         ) : (
-          <TasksMobileCards tasks={tasks} isRoot={isRoot} isOverdueTab={isOverdueTab} />
+          <TasksMobileCards tasks={tasks} isRoot={isRoot} isAdmin={isAdmin} isOverdueTab={isOverdueTab} />
         )}
       </div>
     </div>

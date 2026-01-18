@@ -27,10 +27,11 @@ function getInitials(firstName?: string, lastName?: string, username?: string): 
 interface TasksMobileCardsProps {
   tasks: TaskWithAssignee[];
   isRoot: boolean;
+  isAdmin?: boolean;
   isOverdueTab?: boolean;
 }
 
-export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksMobileCardsProps) {
+export function TasksMobileCards({ tasks, isRoot, isAdmin = false, isOverdueTab = false }: TasksMobileCardsProps) {
   const [selectedTask, setSelectedTask] = useState<TaskWithAssignee | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -195,6 +196,7 @@ export function TasksMobileCards({ tasks, isRoot, isOverdueTab = false }: TasksM
       task={selectedTask}
       open={isModalOpen}
       onOpenChange={setIsModalOpen}
+      isAdmin={isAdmin}
     />
     </>
   );

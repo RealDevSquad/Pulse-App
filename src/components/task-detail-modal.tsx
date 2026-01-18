@@ -21,7 +21,9 @@ import { cn } from '@/lib/utils';
 import { getStatusBadgeStyle, formatDueDate, getTaskTypeInfo, getPriorityInfo, isTaskUrgent } from '@/lib/utils';
 import { AIExtensionAnalysis } from '@/components/ai/ai-extension-analysis';
 import { AIProgressAnalysis } from '@/components/ai/ai-progress-analysis';
+import { TaskEnrichmentDisplay } from '@/components/task-enrichment-display';
 import type { TaskWithAssignee } from '@/lib/tasks-cache';
+import type { TaskEnrichmentEvent } from '@/lib/task-enrichment-types';
 
 // =============================================================================
 // Types
@@ -77,6 +79,7 @@ interface TaskDetailModalProps {
   task: TaskWithAssignee | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isAdmin?: boolean;
 }
 
 // =============================================================================
@@ -250,17 +253,21 @@ function ProgressCard({ progress }: { progress: ProgressUpdate }) {
 // Component
 // =============================================================================
 
-export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalProps) {
+export function TaskDetailModal({ task, open, onOpenChange, isAdmin = false }: TaskDetailModalProps) {
   // Progress state
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  
+
   // Extensions state
   const [extensionsData, setExtensionsData] = useState<ExtensionsData | null>(null);
   const [isLoadingExtensions, setIsLoadingExtensions] = useState(false);
   const [showExtensions, setShowExtensions] = useState(false);
   const [showPastExtensions, setShowPastExtensions] = useState(false);
+
+  // Enrichment state
+  const [enrichment, setEnrichment] = useState<TaskEnrichmentEvent | null>(null);
+  const [isLoadingEnrichment, setIsLoadingEnrichment] = useState(false);
 
   // Fetch extensions for the task from our Firestore-backed API
   const fetchExtensions = useCallback(async (taskId: string, assignee?: string) => {
@@ -312,7 +319,27 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     }
   }, []);
 
-  // Reset state when task changes (don't fetch until expanded)
+  // Fetch enrichment for the task (admin only)
+  const fetchEnrichment = useCallback(async (taskId: string) => {
+    if (!isAdmin) return;
+    setIsLoadingEnrichment(true);
+    try {
+      const response = await fetch(`/api/task-enrichment?taskId=${taskId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setEnrichment(data.enrichment || null);
+      } else {
+        setEnrichment(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch enrichment:', error);
+      setEnrichment(null);
+    } finally {
+      setIsLoadingEnrichment(false);
+    }
+  }, [isAdmin]);
+
+  // Reset state when task changes and fetch enrichment (for admins)
   useEffect(() => {
     if (task?.id && open) {
       setShowProgress(false);
@@ -320,8 +347,13 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
       setShowExtensions(false);
       setShowPastExtensions(false);
       setExtensionsData(null);
+      setEnrichment(null);
+      // Fetch enrichment immediately for admins
+      if (isAdmin) {
+        fetchEnrichment(task.id);
+      }
     }
-  }, [task?.id, open]);
+  }, [task?.id, open, isAdmin, fetchEnrichment]);
 
   // Handle progress toggle - fetch on first expand
   const handleToggleProgress = () => {
@@ -501,6 +533,29 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                 </motion.div>
 
                 <Separator />
+
+                {/* Task Enrichment Section (Admin only) */}
+                {isAdmin && (
+                  <motion.div variants={itemVariants}>
+                    {isLoadingEnrichment ? (
+                      <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading enrichment...</span>
+                      </div>
+                    ) : (
+                      <TaskEnrichmentDisplay
+                        enrichment={enrichment}
+                        taskId={task.id}
+                        taskTitle={task.title}
+                        taskType={task.type}
+                        taskStatus={task.status}
+                        taskPriority={task.priority}
+                        isAdmin={isAdmin}
+                        onEnrichmentUpdated={(updated) => setEnrichment(updated)}
+                      />
+                    )}
+                  </motion.div>
+                )}
 
                 {/* Progress Updates Section */}
                 <motion.div variants={itemVariants} className="space-y-2">

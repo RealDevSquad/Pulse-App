@@ -1,6 +1,6 @@
 import { getCachedTasks, type TaskSortField, type SortOrder, type TaskStatusFilter } from '@/lib/tasks-cache';
 import { getSession } from '@/lib/auth';
-import { isRootUser } from '@/lib/users';
+import { isRootUser, isAdminUser } from '@/lib/users';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TasksContent } from '@/components/tasks-content';
@@ -46,10 +46,11 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
 }
 
 export default async function TasksPage({ searchParams }: PageProps) {
-  // Access is already checked in layout
-  const session = await getSession();
-  const isRoot = session?.userId ? await isRootUser(session.userId) : false;
-  const params = await searchParams;
+  // Fetch session and params in parallel
+  const [session, params] = await Promise.all([
+    getSession(),
+    searchParams,
+  ]);
 
   const tab: TaskTab = params.tab === 'overdue' ? 'overdue' : 'current';
   const page = Math.max(1, parseInt(params.page || '1', 10));
@@ -60,13 +61,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
   if (tab === 'overdue') {
     const filters: FilterState = { sortBy, sortOrder, statusFilter: 'overdue' as TaskStatusFilter };
 
-    const { tasks, total, hasMore } = await getCachedTasks({
-      limit: ITEMS_PER_PAGE,
-      offset: (page - 1) * ITEMS_PER_PAGE,
-      sortBy,
-      sortOrder,
-      statusFilter: 'overdue',
-    });
+    // Fetch isRoot, isAdmin, and tasks in parallel
+    const [isRoot, isAdmin, { tasks, total, hasMore }] = await Promise.all([
+      session?.userId ? isRootUser(session.userId) : Promise.resolve(false),
+      session?.userId ? isAdminUser(session.userId) : Promise.resolve(false),
+      getCachedTasks({
+        limit: ITEMS_PER_PAGE,
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        sortBy,
+        sortOrder,
+        statusFilter: 'overdue',
+      }),
+    ]);
 
     const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -84,6 +90,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
           tasks={tasks}
           filters={filters}
           isRoot={isRoot}
+          isAdmin={isAdmin}
           activeTab="overdue"
           isOverdueTab
           showFilters={false}
@@ -140,13 +147,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
   const filters: FilterState = { sortBy, sortOrder, statusFilter };
 
-  const { tasks, total, hasMore } = await getCachedTasks({
-    limit: ITEMS_PER_PAGE,
-    offset: (page - 1) * ITEMS_PER_PAGE,
-    sortBy,
-    sortOrder,
-    statusFilter,
-  });
+  // Fetch isRoot, isAdmin, and tasks in parallel
+  const [isRoot, isAdmin, { tasks, total, hasMore }] = await Promise.all([
+    session?.userId ? isRootUser(session.userId) : Promise.resolve(false),
+    session?.userId ? isAdminUser(session.userId) : Promise.resolve(false),
+    getCachedTasks({
+      limit: ITEMS_PER_PAGE,
+      offset: (page - 1) * ITEMS_PER_PAGE,
+      sortBy,
+      sortOrder,
+      statusFilter,
+    }),
+  ]);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -164,6 +176,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
         tasks={tasks}
         filters={filters}
         isRoot={isRoot}
+        isAdmin={isAdmin}
         activeTab="current"
         showFilters={true}
       />
