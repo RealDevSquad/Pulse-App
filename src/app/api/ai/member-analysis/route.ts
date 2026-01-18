@@ -550,11 +550,58 @@ export async function POST(request: NextRequest) {
       activeSince: activeSince ?? user.created_at,
     });
 
+    // Calculate communication score
+    const totalExtensions = extensionMetrics.total;
+    const lateExtensions = extensionMetrics.late;
+    const proactiveExtensions = totalExtensions - lateExtensions;
+    const communicationScore = totalExtensions > 0
+      ? Math.round((proactiveExtensions / totalExtensions) * 100)
+      : 100;
+
+    // Prepare metrics for client visualization
+    const clientMetrics = {
+      tenure: {
+        days: activeSince
+          ? Math.floor((Date.now() - activeSince) / (1000 * 60 * 60 * 24))
+          : user.created_at
+            ? Math.floor((Date.now() - user.created_at) / (1000 * 60 * 60 * 24))
+            : 0,
+        since: activeSince ?? user.created_at,
+      },
+      tasks: {
+        completed: logsMetrics.tasksCompleted,
+        started: logsMetrics.tasksStarted,
+        active: activeTasks.filter(t => !['COMPLETED', 'DONE', 'VERIFIED'].includes(t.status?.toUpperCase() || '')).length,
+      },
+      extensions: {
+        total: totalExtensions,
+        late: lateExtensions,
+        proactive: proactiveExtensions,
+      },
+      communicationScore,
+      onTimeRate: timelineMetrics.onTimeCompletionRate,
+      progressUpdates: {
+        count: progressSummary.updateCount,
+        daysSinceLast: progressSummary.daysSinceLastUpdate,
+      },
+      multiPeriod: multiPeriodMetrics.periods.map(p => ({
+        label: p.label,
+        days: p.days,
+        completed: p.tasksCompleted,
+        started: p.tasksStarted,
+        extensions: p.extensionRequests,
+      })),
+    };
+
     // Create SSE stream
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
         try {
+          // Send metrics as first message for client visualizations
+          const metricsMessage = `data: ${JSON.stringify({ metrics: clientMetrics })}\n\n`;
+          controller.enqueue(encoder.encode(metricsMessage));
+
           for await (const chunk of stream) {
             const sseMessage = `data: ${JSON.stringify({ content: chunk })}\n\n`;
             controller.enqueue(encoder.encode(sseMessage));
