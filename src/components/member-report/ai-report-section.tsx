@@ -296,45 +296,64 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
                     </div>
                     {isTrendSection ? (
                       // Enhanced rendering for trend analysis with badges
-                      <div className="space-y-3">
-                        {section.content.split('\n').map((line, i) => {
-                          if (line.trim().startsWith('- **')) {
-                            const match = line.match(/\*\*(.*?)\*\*:\s*(.*)/);
-                            if (match) {
-                              const [, label, description] = match;
-                              return (
-                                <div
-                                  key={i}
-                                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
-                                >
-                                  {getTrendIcon(description)}
-                                  <div className="flex-1 space-y-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-sm font-medium">{label}</span>
-                                      {(description.toLowerCase().includes('improved') ||
-                                        description.toLowerCase().includes('declined') ||
-                                        description.toLowerCase().includes('stable')) && (
-                                        <Badge
-                                          variant={getTrendBadgeVariant(description)}
-                                          className="text-xs"
-                                        >
-                                          {description.toLowerCase().includes('improved')
-                                            ? 'Improving'
-                                            : description.toLowerCase().includes('declined')
-                                              ? 'Declining'
-                                              : 'Stable'}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">{description}</p>
-                                  </div>
-                                </div>
-                              );
+                      (() => {
+                        // Parse trend items from content
+                        const trendItems = section.content
+                          .split('\n')
+                          .map((line) => {
+                            if (line.trim().startsWith('- **')) {
+                              const match = line.match(/\*\*(.*?)\*\*:\s*(.*)/);
+                              if (match) {
+                                return { label: match[1], description: match[2] };
+                              }
                             }
-                          }
-                          return null;
-                        })}
-                      </div>
+                            return null;
+                          })
+                          .filter(Boolean) as { label: string; description: string }[];
+
+                        // If no trend items found, fall back to markdown
+                        if (trendItems.length === 0) {
+                          return (
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-ul:space-y-2 prose-li:text-sm prose-strong:text-foreground">
+                              <ReactMarkdown>{section.content}</ReactMarkdown>
+                            </div>
+                          );
+                        }
+
+                        // Render enhanced trend items
+                        return (
+                          <div className="space-y-3">
+                            {trendItems.map((item, i) => (
+                              <div
+                                key={i}
+                                className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
+                              >
+                                {getTrendIcon(item.description)}
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium">{item.label}</span>
+                                    {(item.description.toLowerCase().includes('improved') ||
+                                      item.description.toLowerCase().includes('declined') ||
+                                      item.description.toLowerCase().includes('stable')) && (
+                                      <Badge
+                                        variant={getTrendBadgeVariant(item.description)}
+                                        className="text-xs"
+                                      >
+                                        {item.description.toLowerCase().includes('improved')
+                                          ? 'Improving'
+                                          : item.description.toLowerCase().includes('declined')
+                                            ? 'Declining'
+                                            : 'Stable'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
                     ) : isRiskSection && section.content.toLowerCase().includes('none') ? (
                       // Special rendering for "None identified" risk flags
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
