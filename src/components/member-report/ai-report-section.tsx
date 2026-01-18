@@ -253,16 +253,17 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
           </div>
         )}
 
-        {/* Single render path for both streaming and completed states */}
+        {/* Loading indicator - shown immediately when generating starts */}
+        {isGenerating && !error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+            <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+            <span className="text-purple-700 dark:text-purple-300 font-medium">Analyzing member performance...</span>
+          </div>
+        )}
+
+        {/* Content - shown once report has content */}
         {(isGenerating || hasGenerated) && !error && report && (
           <div className="space-y-4">
-            {/* Loading indicator shown during streaming */}
-            {isGenerating && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-                <span className="text-purple-700 dark:text-purple-300 font-medium">Analyzing member performance...</span>
-              </div>
-            )}
 
             {/* Raw output view */}
             {showRaw && !isGenerating && (
