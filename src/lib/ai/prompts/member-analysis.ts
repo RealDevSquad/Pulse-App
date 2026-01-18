@@ -47,6 +47,7 @@ export const MEMBER_ANALYSIS_TEMPLATE = `Analyze this member's performance and g
 {multiPeriodBreakdown}
 
 NOTE: Compare these periods to identify trends. Increasing activity over time = improving engagement. Decreasing activity = potential disengagement.
+IMPORTANT: The member joined {memberSince} ({tenure} ago). Only analyze metrics from periods AFTER they joined. If a period shows zero activity because the member hadn't joined yet, ignore that period entirely - don't report it as "stable" or "identical".
 
 ## Recent Activity (Last 30 Days - Detail)
 - **Tasks Assigned:** {tasksAssigned}
@@ -109,11 +110,15 @@ Write 2-3 sentences summarizing the member's overall performance trajectory and 
 
 ## Performance Trend Analysis
 
-Compare the multi-period metrics to identify trends:
-- **12-month to 6-month change:** [Improved/Declined/Stable] - explain briefly
-- **6-month to 3-month change:** [Improved/Declined/Stable] - explain briefly
-- **3-month to 30-day change:** [Improved/Declined/Stable] - explain briefly
-- **Overall trend:** [Improving/Declining/Stable/Fluctuating]
+IMPORTANT: Only analyze periods where the member was actually active (based on their tenure: {tenure}). For new members, skip comparisons for time periods before they joined - don't say "Stable - metrics identical" for periods when they didn't exist yet.
+
+Compare the multi-period metrics to identify trends (only for relevant periods):
+- If member has 6+ months tenure: **12-month to 6-month change:** [Improved/Declined/Stable] - explain briefly
+- If member has 3+ months tenure: **6-month to 3-month change:** [Improved/Declined/Stable] - explain briefly
+- **3-month to 30-day change:** [Improved/Declined/Stable] - explain briefly (most members will have this)
+- **Overall trend:** [Improving/Declining/Stable/Fluctuating/Too Early to Assess]
+
+For members with less than 3 months tenure, focus on their recent engagement patterns rather than long-term trends.
 
 ## Activity Analysis
 
