@@ -1,13 +1,119 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Sparkles,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Target,
+  Award,
+  AlertTriangle,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
+  Activity,
+} from 'lucide-react';
 
 interface AIReportSectionProps {
   userId: string;
+}
+
+interface ParsedSection {
+  title: string;
+  content: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  variant?: 'default' | 'success' | 'warning' | 'destructive';
+}
+
+function parseReportSections(markdown: string): ParsedSection[] {
+  const sections: ParsedSection[] = [];
+  const lines = markdown.split('\n');
+  let currentSection: ParsedSection | null = null;
+  let currentContent: string[] = [];
+
+  for (const line of lines) {
+    // Check for ## headers (main sections)
+    if (line.startsWith('## ')) {
+      // Save previous section
+      if (currentSection) {
+        currentSection.content = currentContent.join('\n').trim();
+        sections.push(currentSection);
+      }
+
+      // Start new section
+      const title = line.replace('## ', '').trim();
+      currentSection = {
+        title,
+        content: '',
+        icon: getSectionIcon(title),
+        variant: getSectionVariant(title),
+      };
+      currentContent = [];
+    } else if (currentSection) {
+      currentContent.push(line);
+    }
+  }
+
+  // Save last section
+  if (currentSection) {
+    currentSection.content = currentContent.join('\n').trim();
+    sections.push(currentSection);
+  }
+
+  return sections;
+}
+
+function getSectionIcon(title: string): React.ComponentType<{ className?: string }> {
+  const lower = title.toLowerCase();
+  if (lower.includes('executive') || lower.includes('summary')) return Sparkles;
+  if (lower.includes('trend') || lower.includes('performance')) return Activity;
+  if (lower.includes('strength')) return Award;
+  if (lower.includes('development') || lower.includes('improvement')) return Target;
+  if (lower.includes('next steps') || lower.includes('recommended')) return Lightbulb;
+  if (lower.includes('risk') || lower.includes('flag')) return AlertTriangle;
+  return Activity;
+}
+
+function getSectionVariant(title: string): 'default' | 'success' | 'warning' | 'destructive' {
+  const lower = title.toLowerCase();
+  if (lower.includes('strength')) return 'success';
+  if (lower.includes('risk') || lower.includes('flag')) return 'destructive';
+  if (lower.includes('development') || lower.includes('improvement')) return 'warning';
+  return 'default';
+}
+
+function getTrendIcon(content: string): React.ReactNode {
+  const lower = content.toLowerCase();
+  if (lower.includes('improved') || lower.includes('improving') || lower.includes('increased')) {
+    return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />;
+  }
+  if (lower.includes('declined') || lower.includes('declining') || lower.includes('decreased')) {
+    return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />;
+  }
+  return <Minus className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
+}
+
+function getTrendBadgeVariant(
+  content: string
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  const lower = content.toLowerCase();
+  if (lower.includes('improved') || lower.includes('improving')) return 'default';
+  if (lower.includes('declined') || lower.includes('declining')) return 'destructive';
+  return 'secondary';
 }
 
 export function AIReportSection({ userId }: AIReportSectionProps) {
@@ -15,11 +121,37 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const sections = useMemo(() => {
+    if (!report) return [];
+    return parseReportSections(report);
+  }, [report]);
+
+  const executiveSummary = sections.find((s) =>
+    s.title.toLowerCase().includes('executive')
+  );
+  const otherSections = sections.filter(
+    (s) => !s.title.toLowerCase().includes('executive')
+  );
+
+  const toggleSection = (title: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) {
+        next.delete(title);
+      } else {
+        next.add(title);
+      }
+      return next;
+    });
+  };
 
   const generateReport = useCallback(async () => {
     setIsGenerating(true);
     setError(null);
     setReport('');
+    setExpandedSections(new Set());
 
     try {
       const response = await fetch('/api/ai/member-analysis', {
@@ -70,6 +202,8 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
       }
 
       setHasGenerated(true);
+      // Auto-expand the first few important sections
+      setExpandedSections(new Set(['Performance Trend Analysis', 'Strengths', 'Activity Analysis']));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -110,14 +244,78 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
         )}
 
         {isGenerating && (
-          <div className="py-6">
-            <div className="flex items-center gap-2 text-muted-foreground mb-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Analyzing member performance...</span>
+          <div className="py-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+              <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+              <span className="text-purple-700 dark:text-purple-300 font-medium">Analyzing member performance...</span>
             </div>
             {report && (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>{report}</ReactMarkdown>
+              <div className="space-y-4">
+                {/* Show structured sections even during streaming */}
+                {sections.length > 0 ? (
+                  <>
+                    {/* Executive Summary - Hero Section (during streaming) */}
+                    {executiveSummary && (
+                      <div className="rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-4 sm:p-6">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+                            {executiveSummary.title}
+                          </h3>
+                        </div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-base prose-p:leading-relaxed">
+                          <ReactMarkdown>{executiveSummary.content}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                    {/* Other sections shown as simple cards during streaming */}
+                    {otherSections.map((section, index) => {
+                      const Icon = section.icon || Activity;
+                      return (
+                        <Card key={index}>
+                          <div className="p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div
+                                className={`p-2 rounded-lg ${
+                                  section.variant === 'success'
+                                    ? 'bg-green-100 dark:bg-green-900/30'
+                                    : section.variant === 'warning'
+                                      ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                                      : section.variant === 'destructive'
+                                        ? 'bg-red-100 dark:bg-red-900/30'
+                                        : 'bg-blue-100 dark:bg-blue-900/30'
+                                }`}
+                              >
+                                <Icon
+                                  className={`h-4 w-4 ${
+                                    section.variant === 'success'
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : section.variant === 'warning'
+                                        ? 'text-yellow-600 dark:text-yellow-400'
+                                        : section.variant === 'destructive'
+                                          ? 'text-red-600 dark:text-red-400'
+                                          : 'text-blue-600 dark:text-blue-400'
+                                  }`}
+                                />
+                              </div>
+                              <h3 className="font-semibold text-sm sm:text-base">{section.title}</h3>
+                            </div>
+                            <div className="prose prose-sm dark:prose-invert max-w-none prose-ul:space-y-1 prose-li:text-sm">
+                              <ReactMarkdown>{section.content}</ReactMarkdown>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </>
+                ) : (
+                  // Fallback to plain markdown if sections haven't been parsed yet
+                  <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-base prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2">
+                    <ReactMarkdown>{report}</ReactMarkdown>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -136,8 +334,146 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
         )}
 
         {hasGenerated && !isGenerating && !error && report && (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{report}</ReactMarkdown>
+          <div className="space-y-4">
+            {/* Executive Summary - Hero Section */}
+            {executiveSummary && (
+              <div className="rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 p-4 sm:p-6">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                    <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+                      {executiveSummary.title}
+                    </h3>
+                  </div>
+                </div>
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-base prose-p:leading-relaxed">
+                  <ReactMarkdown>{executiveSummary.content}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {/* Other Sections - Collapsible Cards */}
+            {otherSections.map((section, index) => {
+              const isExpanded = expandedSections.has(section.title);
+              const Icon = section.icon || Activity;
+              const isTrendSection = section.title.toLowerCase().includes('trend');
+              const isRiskSection = section.title.toLowerCase().includes('risk');
+
+              return (
+                <Card key={index} className="overflow-hidden">
+                  <Collapsible
+                    open={isExpanded}
+                    onOpenChange={() => toggleSection(section.title)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2 rounded-lg ${
+                              section.variant === 'success'
+                                ? 'bg-green-100 dark:bg-green-900/30'
+                                : section.variant === 'warning'
+                                  ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                                  : section.variant === 'destructive'
+                                    ? 'bg-red-100 dark:bg-red-900/30'
+                                    : 'bg-blue-100 dark:bg-blue-900/30'
+                            }`}
+                          >
+                            <Icon
+                              className={`h-4 w-4 ${
+                                section.variant === 'success'
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : section.variant === 'warning'
+                                    ? 'text-yellow-600 dark:text-yellow-400'
+                                    : section.variant === 'destructive'
+                                      ? 'text-red-600 dark:text-red-400'
+                                      : 'text-blue-600 dark:text-blue-400'
+                              }`}
+                            />
+                          </div>
+                          <h3 className="font-semibold text-sm sm:text-base">
+                            {section.title}
+                          </h3>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
+                        )}
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <Separator />
+                      <div className="p-4">
+                        {isTrendSection ? (
+                          // Enhanced rendering for trend analysis with badges
+                          <div className="space-y-3">
+                            {section.content.split('\n').map((line, i) => {
+                              if (line.trim().startsWith('- **')) {
+                                const match = line.match(/\*\*(.*?)\*\*:\s*(.*)/);
+                                if (match) {
+                                  const [, label, description] = match;
+                                  return (
+                                    <div
+                                      key={i}
+                                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
+                                    >
+                                      {getTrendIcon(description)}
+                                      <div className="flex-1 space-y-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-sm font-medium">{label}</span>
+                                          {(description.toLowerCase().includes('improved') ||
+                                            description.toLowerCase().includes('declined') ||
+                                            description.toLowerCase().includes('stable')) && (
+                                            <Badge
+                                              variant={getTrendBadgeVariant(description)}
+                                              className="text-xs"
+                                            >
+                                              {description
+                                                .toLowerCase()
+                                                .includes('improved')
+                                                ? 'Improving'
+                                                : description
+                                                    .toLowerCase()
+                                                    .includes('declined')
+                                                  ? 'Declining'
+                                                  : 'Stable'}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                          {description}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              }
+                              return null;
+                            })}
+                          </div>
+                        ) : isRiskSection && section.content.toLowerCase().includes('none') ? (
+                          // Special rendering for "None identified" risk flags
+                          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                            <Award className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <p className="text-sm text-green-700 dark:text-green-300">
+                              No immediate concerns identified
+                            </p>
+                          </div>
+                        ) : (
+                          // Default markdown rendering with enhanced styling
+                          <div className="prose prose-sm dark:prose-invert max-w-none prose-ul:space-y-2 prose-li:text-sm prose-strong:text-foreground">
+                            <ReactMarkdown>{section.content}</ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </Card>
+              );
+            })}
           </div>
         )}
       </CardContent>

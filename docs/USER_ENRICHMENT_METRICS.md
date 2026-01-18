@@ -148,6 +148,100 @@ const lateExtensionPenalty = Math.min(45, lateCount * 15);   // -15 each, max -4
 **Extension Analysis Chain** (`src/lib/ai/chains/extension-analysis.ts`):
 - Calculates `lateExtensionCount` by comparing `timestamp` vs `oldEndsOn`
 
+## AI Summary Data Flow
+
+The AI member analysis receives enriched data from multiple sources to generate comprehensive, actionable reports.
+
+### Data Sources for AI Summaries
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    member-analysis/route.ts                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────┐ │
+│  │ Task Enrichment  │   │Extension Enrichmt│   │ Member Enrichment    │ │
+│  │ (pulseAppOnly)   │   │ (pulseAppOnly)   │   │ (pulseAppOnly)       │ │
+│  │                  │   │                  │   │                      │ │
+│  │ • complexity     │   │ • avoidabilities │   │ • context_note       │ │
+│  │ • skills[]       │   │ • rootCauses     │   │ • goal_set           │ │
+│  │ • unknownFactors │   │ • severity       │   │ • skill_assessment   │ │
+│  └────────┬─────────┘   │ • flags          │   │ • intervention       │ │
+│           │             └────────┬─────────┘   └──────────┬───────────┘ │
+│           │                      │                        │             │
+│           ▼                      ▼                        ▼             │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                    generateMemberAnalysis()                       │  │
+│  │                                                                   │  │
+│  │  Metrics:                    Extension Patterns:    Enrichments:  │  │
+│  │  • weightedProductivity      • avoidable %          • notes       │  │
+│  │  • complexityBreakdown       • avg severity         • categories  │  │
+│  │  • skillsUsed                • top factors          • timestamps  │  │
+│  │  • onTimeRate                • concerning flags                   │  │
+│  │  • communicationScore        • root causes                        │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                    │                                    │
+│                                    ▼                                    │
+│                          AI Prompt Template                             │
+│                     (member-analysis.ts prompt)                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1. Task Enrichments
+
+Fetched via `getTaskEnrichmentSummary()` from `pulseAppOnly` where `meta.type === 'task_enrichment'`:
+
+| Field | AI Placeholder | Description |
+|-------|----------------|-------------|
+| `weightedProductivity` | `{weightedProductivity}` | Sum of complexity weights (trivial=1, simple=2, moderate=3, complex=4, very_complex=5) |
+| `tasksByComplexity` | `{complexityBreakdown}` | Count of tasks per complexity level |
+| `skillsUsed` | `{skillsUsed}` | Skills practiced from task enrichment |
+| `unenrichedTaskCount` | (internal) | Tasks without enrichment data |
+
+### 2. Extension Enrichments
+
+Fetched from `pulseAppOnly` where `meta.type === 'extension_enrichment'`, formatted via `formatExtensionPatternsForAI()`:
+
+| Field | AI Placeholder | Description |
+|-------|----------------|-------------|
+| `avoidablePercentage` | `{extensionPatterns}` | % of extensions with severity >= 2 |
+| `avgSeverity` | `{extensionPatterns}` | 0-3 scale (0=unavoidable, 3=clearly avoidable) |
+| `topAvoidabilities` | `{extensionPatterns}` | Most common avoidability factors |
+| `topRootCauses` | `{extensionPatterns}` | Most common root causes |
+| `flagCounts` | `{extensionPatterns}` | Concerning patterns (repeat offender, same task repeat, short interval, significant delay) |
+| `notes` | `{extensionPatterns}` | Superuser commentary on extensions |
+
+### 3. Member Enrichments
+
+Fetched from `pulseAppOnly` where `meta.type === 'member_enrichment'`:
+
+| Field | AI Placeholder | Description |
+|-------|----------------|-------------|
+| `enrichmentType` | `{enrichmentNotes}` | Type: context_note, goal_set, skill_assessment, intervention |
+| `content.text` | `{enrichmentNotes}` | The actual note content |
+| `content.category` | `{enrichmentNotes}` | Category: mentorship, blocker, growth, recognition |
+
+### 4. Additional Computed Metrics
+
+Calculated in `member-analysis/route.ts`:
+
+| Metric | AI Placeholder | Source |
+|--------|----------------|--------|
+| Progress updates | `{progressUpdateCount}`, `{daysSinceLastUpdate}` | `progresses` collection |
+| Recent blockers | `{recentBlockers}` | Extracted from progress update text |
+| Task requests | `{taskRequestsMade}`, `{taskRequestsApproved}` | `taskRequests` collection |
+| Timeline accuracy | `{averageDaysToStart}`, `{onTimeCompletionRate}` | Calculated from tasks |
+| Auto-detected flags | `{flags}` | Red/green flags based on patterns |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/ai/member-analysis/route.ts` | Fetches all data, builds metrics, calls AI chain |
+| `src/lib/ai/chains/member-analysis.ts` | Formats data, streams to AI model |
+| `src/lib/ai/prompts/member-analysis.ts` | Prompt template with all placeholders |
+| `src/lib/ai/prompts/extension-enrichment-context.ts` | Formats extension patterns for AI |
+
 ## Related Scripts
 
 Analysis scripts are located in the RDS workspace:
