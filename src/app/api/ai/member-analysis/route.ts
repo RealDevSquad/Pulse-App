@@ -357,6 +357,36 @@ function getOverdueTaskCount(tasks: any[]): number {
   return count;
 }
 
+/**
+ * Calculate historical late completions - tasks completed AFTER their deadline.
+ * This tracks the member's history of missing deadlines, not just current overdue.
+ */
+function getHistoricalLateCompletions(tasks: any[]): { count: number; tasks: string[] } {
+  const completedStatuses = ['COMPLETED', 'DONE', 'VERIFIED'];
+  let count = 0;
+  const lateTasks: string[] = [];
+
+  for (const task of tasks) {
+    const isCompleted = completedStatuses.includes(task.status?.toUpperCase() || '');
+    if (isCompleted && task.endsOn) {
+      const deadline = typeof task.endsOn === 'number' && task.endsOn < 1e12
+        ? task.endsOn * 1000
+        : task.endsOn;
+
+      // Use updatedAt as completion time (when status changed to completed)
+      const completedAt = normalizeTimestamp(task.updatedAt || task.updated_at);
+
+      if (completedAt && completedAt > deadline) {
+        count++;
+        const daysLate = Math.floor((completedAt - deadline) / (1000 * 60 * 60 * 24));
+        lateTasks.push(`${task.title} (completed ${daysLate} day${daysLate !== 1 ? 's' : ''} late)`);
+      }
+    }
+  }
+
+  return { count, tasks: lateTasks };
+}
+
 function detectFlags(
   metrics: {
     extensionTotal: number;
@@ -367,6 +397,7 @@ function detectFlags(
     taskRequestsMade: number;
     taskRequestsApproved: number;
     overdueTaskCount: number;
+    historicalLateCount: number;
   }
 ): Flags {
   const red: string[] = [];
@@ -375,6 +406,10 @@ function detectFlags(
   // Red flags - Overdue tasks are CRITICAL
   if (metrics.overdueTaskCount > 0) {
     red.push(`🚨 ${metrics.overdueTaskCount} OVERDUE task(s) - requires immediate attention`);
+  }
+  // Historical late completions - even ONE is a concern
+  if (metrics.historicalLateCount > 0) {
+    red.push(`⚠️ ${metrics.historicalLateCount} task(s) completed AFTER deadline - pattern of missing deadlines`);
   }
   if (metrics.daysSinceLastUpdate !== null && metrics.daysSinceLastUpdate > 14) {
     red.push(`No progress updates for ${metrics.daysSinceLastUpdate} days`);
@@ -386,9 +421,9 @@ function detectFlags(
     red.push(`Low on-time completion rate (${metrics.onTimeRate}%)`);
   }
 
-  // Green flags
-  if (metrics.overdueTaskCount === 0 && metrics.onTimeRate >= 80) {
-    green.push('No overdue tasks - meeting deadlines consistently');
+  // Green flags - only if NO history of late completions
+  if (metrics.overdueTaskCount === 0 && metrics.historicalLateCount === 0 && metrics.onTimeRate >= 80) {
+    green.push('Perfect deadline record - no overdue or late completions');
   }
   if (metrics.extensionTotal > 0 && metrics.extensionLate === 0) {
     green.push('100% of extensions requested proactively (before deadline)');
@@ -399,7 +434,7 @@ function detectFlags(
   if (metrics.taskRequestsMade > 0 && metrics.taskRequestsApproved === metrics.taskRequestsMade) {
     green.push(`Self-starter: ${metrics.taskRequestsMade} task requests, all approved`);
   }
-  if (metrics.onTimeRate >= 90) {
+  if (metrics.onTimeRate >= 90 && metrics.historicalLateCount === 0) {
     green.push(`Excellent on-time completion rate (${metrics.onTimeRate}%)`);
   }
 
@@ -541,8 +576,11 @@ export async function POST(request: NextRequest) {
       .map((t) => t.id);
     const taskEnrichment = await getTaskEnrichmentSummary(completedTaskIds);
 
-    // Calculate overdue task count
+    // Calculate overdue task count (currently overdue)
     const overdueTaskCount = getOverdueTaskCount(activeTasks);
+
+    // Calculate historical late completions (tasks completed after deadline)
+    const historicalLate = getHistoricalLateCompletions(activeTasks);
 
     // Detect red/green flags
     const flags = detectFlags({
@@ -554,6 +592,7 @@ export async function POST(request: NextRequest) {
       taskRequestsMade: initiativeMetrics.taskRequestsMade,
       taskRequestsApproved: initiativeMetrics.taskRequestsApproved,
       overdueTaskCount,
+      historicalLateCount: historicalLate.count,
     });
 
     // Build MemberActivityMetrics with all enriched data
@@ -582,6 +621,7 @@ export async function POST(request: NextRequest) {
       enrichmentEvents,
       extensionEnrichments,
       activeSince: activeSince ?? user.created_at,
+      historicalLateCompletions: historicalLate,
     });
 
     // Calculate communication score
@@ -607,6 +647,7 @@ export async function POST(request: NextRequest) {
         started: logsMetrics.tasksStarted,
         active: activeTasks.filter(t => !['COMPLETED', 'DONE', 'VERIFIED'].includes(t.status?.toUpperCase() || '')).length,
         overdue: overdueTaskCount,
+        historicallyLate: historicalLate.count,
       },
       extensions: {
         total: totalExtensions,

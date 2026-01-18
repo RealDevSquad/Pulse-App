@@ -94,6 +94,16 @@ NOTE: High "days to start" may indicate procrastination or competing priorities.
 
 CRITICAL: Overdue tasks are tasks that have passed their deadline and are NOT yet completed. This is a serious concern that MUST be addressed in the report. If overdueTaskCount > 0, this should be highlighted as a major concern in the Executive Summary and Risk Flags sections. Each overdue day represents missed commitments.
 
+## 🚨 HISTORICAL LATE COMPLETIONS (SERIOUS CONCERN)
+- **Tasks completed AFTER deadline:** {historicalLateCount}
+{historicalLateTasks}
+
+SERIOUS: This tracks tasks that WERE eventually completed but AFTER their deadline passed. Even ONE late completion indicates a pattern that needs correction. This member has a history of missing deadlines. If historicalLateCount > 0:
+- This MUST be mentioned prominently in the Executive Summary
+- This is a behavioral pattern requiring mentorship intervention
+- Do NOT praise this member's "reliability" if they have late completions
+- Recommend specific corrective actions (better estimation, earlier escalation, etc.)
+
 ## Auto-Detected Flags
 {flags}
 

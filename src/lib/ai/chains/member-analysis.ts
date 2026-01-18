@@ -87,6 +87,14 @@ export interface MemberActivityMetrics {
 }
 
 /**
+ * Historical late completion data
+ */
+export interface HistoricalLateCompletions {
+  count: number;
+  tasks: string[];
+}
+
+/**
  * Input for member analysis generation
  */
 export interface MemberAnalysisInput {
@@ -103,6 +111,11 @@ export interface MemberAnalysisInput {
    * Falls back to created_at if not provided.
    */
   activeSince?: number;
+  /**
+   * Tasks that were completed AFTER their deadline.
+   * Even one late completion is a concern that needs addressing.
+   */
+  historicalLateCompletions?: HistoricalLateCompletions;
 }
 
 /**
@@ -317,7 +330,7 @@ function formatFlags(flags?: Flags): string {
  * Generate a streaming member performance analysis
  */
 export async function generateMemberAnalysis(input: MemberAnalysisInput) {
-  const { user, metrics, multiPeriodMetrics, activeTasks, enrichmentEvents, extensionEnrichments, activeSince } = input;
+  const { user, metrics, multiPeriodMetrics, activeTasks, enrichmentEvents, extensionEnrichments, activeSince, historicalLateCompletions } = input;
 
   // Use BALANCED model for more comprehensive analysis
   const llm = createOpenRouterClient({
@@ -384,6 +397,11 @@ export async function generateMemberAnalysis(input: MemberAnalysisInput) {
     overdueTaskCount: overdueMetrics.count,
     overdueTasks: overdueMetrics.tasks.length > 0
       ? overdueMetrics.tasks.map(t => `- ${t}`).join('\n')
+      : 'None',
+    // Historical late completions (tasks completed after deadline)
+    historicalLateCount: historicalLateCompletions?.count ?? 0,
+    historicalLateTasks: historicalLateCompletions && historicalLateCompletions.tasks.length > 0
+      ? historicalLateCompletions.tasks.map(t => `- ${t}`).join('\n')
       : 'None',
   });
 }
