@@ -158,21 +158,67 @@ function calculateTenure(joinTimestamp: number): string {
 }
 
 /**
- * Format active tasks for the prompt
+ * Format active tasks for the prompt, highlighting overdue tasks
  */
 function formatActiveTasks(tasks: Task[]): string {
   if (tasks.length === 0) {
     return 'No active tasks currently assigned.';
   }
 
+  const now = Date.now();
+  const completedStatuses = ['COMPLETED', 'DONE', 'VERIFIED'];
+
   return tasks
     .slice(0, 10) // Limit to 10 most relevant
     .map((task) => {
       const status = task.status?.replace('_', ' ') || 'Unknown';
       const progress = task.percentCompleted ?? 0;
-      return `- ${task.title} (${status}, ${progress}% complete)`;
+      const isCompleted = completedStatuses.includes(task.status?.toUpperCase() || '');
+
+      // Check if task is overdue (has deadline that's passed and not completed)
+      let overdueInfo = '';
+      if (!isCompleted && task.endsOn) {
+        const deadline = typeof task.endsOn === 'number' && task.endsOn < 1e12
+          ? task.endsOn * 1000
+          : task.endsOn;
+        if (deadline < now) {
+          const daysOverdue = Math.floor((now - deadline) / (1000 * 60 * 60 * 24));
+          overdueInfo = ` ⚠️ OVERDUE by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}`;
+        }
+      }
+
+      return `- ${task.title} (${status}, ${progress}% complete)${overdueInfo}`;
     })
     .join('\n');
+}
+
+/**
+ * Calculate overdue task metrics
+ */
+function calculateOverdueMetrics(tasks: Task[]): { count: number; totalDaysOverdue: number; tasks: string[] } {
+  const now = Date.now();
+  const completedStatuses = ['COMPLETED', 'DONE', 'VERIFIED'];
+
+  let count = 0;
+  let totalDaysOverdue = 0;
+  const overdueTasks: string[] = [];
+
+  for (const task of tasks) {
+    const isCompleted = completedStatuses.includes(task.status?.toUpperCase() || '');
+    if (!isCompleted && task.endsOn) {
+      const deadline = typeof task.endsOn === 'number' && task.endsOn < 1e12
+        ? task.endsOn * 1000
+        : task.endsOn;
+      if (deadline < now) {
+        const daysOverdue = Math.floor((now - deadline) / (1000 * 60 * 60 * 24));
+        count++;
+        totalDaysOverdue += daysOverdue;
+        overdueTasks.push(`${task.title} (${daysOverdue} days overdue)`);
+      }
+    }
+  }
+
+  return { count, totalDaysOverdue, tasks: overdueTasks };
 }
 
 /**
@@ -297,6 +343,9 @@ export async function generateMemberAnalysis(input: MemberAnalysisInput) {
   const initiativeMetrics = metrics.initiativeMetrics;
   const timelineMetrics = metrics.timelineMetrics;
 
+  // Calculate overdue task metrics
+  const overdueMetrics = calculateOverdueMetrics(activeTasks);
+
   // Use activeSince (first task activity) for tenure, more accurate than created_at
   const tenureTimestamp = activeSince || user.created_at;
 
@@ -331,6 +380,11 @@ export async function generateMemberAnalysis(input: MemberAnalysisInput) {
     averageDaysToStart: timelineMetrics?.averageDaysToStart ?? 'Unknown',
     onTimeCompletionRate: timelineMetrics?.onTimeCompletionRate ?? 100,
     flags: formatFlags(metrics.flags),
+    // Overdue task metrics
+    overdueTaskCount: overdueMetrics.count,
+    overdueTasks: overdueMetrics.tasks.length > 0
+      ? overdueMetrics.tasks.map(t => `- ${t}`).join('\n')
+      : 'None',
   });
 }
 

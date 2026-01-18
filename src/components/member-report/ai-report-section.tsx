@@ -54,6 +54,7 @@ interface ReportMetrics {
     completed: number;
     started: number;
     active: number;
+    overdue: number;
   };
   extensions: {
     total: number;
@@ -628,6 +629,23 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
         {/* Metrics visualizations - show as soon as metrics arrive */}
         {metrics && !error && (
           <div className="space-y-6 mb-6">
+            {/* Critical: Overdue Tasks Warning */}
+            {metrics.tasks.overdue > 0 && (
+              <div className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950/30 p-4 flex items-center gap-3">
+                <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/50">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-red-700 dark:text-red-300">
+                    {metrics.tasks.overdue} Overdue Task{metrics.tasks.overdue !== 1 ? 's' : ''}
+                  </p>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    Tasks past their deadline require immediate attention
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Hero Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <StatCard
@@ -639,9 +657,9 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
               <StatCard
                 label="Tasks Completed"
                 value={metrics.tasks.completed}
-                subValue={metrics.tasks.active > 0 ? `${metrics.tasks.active} active` : undefined}
+                subValue={metrics.tasks.overdue > 0 ? `⚠️ ${metrics.tasks.overdue} overdue` : metrics.tasks.active > 0 ? `${metrics.tasks.active} active` : undefined}
                 icon={CheckCircle2}
-                color="green"
+                color={metrics.tasks.overdue > 0 ? 'red' : 'green'}
               />
               <StatCard
                 label="On-Time Rate"

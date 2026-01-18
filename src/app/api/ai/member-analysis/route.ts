@@ -334,6 +334,29 @@ interface Flags {
   green: string[];
 }
 
+/**
+ * Calculate overdue task count from active tasks
+ */
+function getOverdueTaskCount(tasks: any[]): number {
+  const now = Date.now();
+  const completedStatuses = ['COMPLETED', 'DONE', 'VERIFIED'];
+  let count = 0;
+
+  for (const task of tasks) {
+    const isCompleted = completedStatuses.includes(task.status?.toUpperCase() || '');
+    if (!isCompleted && task.endsOn) {
+      const deadline = typeof task.endsOn === 'number' && task.endsOn < 1e12
+        ? task.endsOn * 1000
+        : task.endsOn;
+      if (deadline < now) {
+        count++;
+      }
+    }
+  }
+
+  return count;
+}
+
 function detectFlags(
   metrics: {
     extensionTotal: number;
@@ -343,12 +366,16 @@ function detectFlags(
     onTimeRate: number;
     taskRequestsMade: number;
     taskRequestsApproved: number;
+    overdueTaskCount: number;
   }
 ): Flags {
   const red: string[] = [];
   const green: string[] = [];
 
-  // Red flags
+  // Red flags - Overdue tasks are CRITICAL
+  if (metrics.overdueTaskCount > 0) {
+    red.push(`🚨 ${metrics.overdueTaskCount} OVERDUE task(s) - requires immediate attention`);
+  }
   if (metrics.daysSinceLastUpdate !== null && metrics.daysSinceLastUpdate > 14) {
     red.push(`No progress updates for ${metrics.daysSinceLastUpdate} days`);
   }
@@ -360,6 +387,9 @@ function detectFlags(
   }
 
   // Green flags
+  if (metrics.overdueTaskCount === 0 && metrics.onTimeRate >= 80) {
+    green.push('No overdue tasks - meeting deadlines consistently');
+  }
   if (metrics.extensionTotal > 0 && metrics.extensionLate === 0) {
     green.push('100% of extensions requested proactively (before deadline)');
   }
@@ -511,6 +541,9 @@ export async function POST(request: NextRequest) {
       .map((t) => t.id);
     const taskEnrichment = await getTaskEnrichmentSummary(completedTaskIds);
 
+    // Calculate overdue task count
+    const overdueTaskCount = getOverdueTaskCount(activeTasks);
+
     // Detect red/green flags
     const flags = detectFlags({
       extensionTotal: extensionMetrics.total,
@@ -520,6 +553,7 @@ export async function POST(request: NextRequest) {
       onTimeRate: timelineMetrics.onTimeCompletionRate,
       taskRequestsMade: initiativeMetrics.taskRequestsMade,
       taskRequestsApproved: initiativeMetrics.taskRequestsApproved,
+      overdueTaskCount,
     });
 
     // Build MemberActivityMetrics with all enriched data
@@ -572,6 +606,7 @@ export async function POST(request: NextRequest) {
         completed: logsMetrics.tasksCompleted,
         started: logsMetrics.tasksStarted,
         active: activeTasks.filter(t => !['COMPLETED', 'DONE', 'VERIFIED'].includes(t.status?.toUpperCase() || '')).length,
+        overdue: overdueTaskCount,
       },
       extensions: {
         total: totalExtensions,

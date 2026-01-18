@@ -88,6 +88,12 @@ NOTE: High self-selection indicates proactive engagement. Low approval rates may
 
 NOTE: High "days to start" may indicate procrastination or competing priorities. Low on-time rate suggests estimation help is needed.
 
+## ⚠️ OVERDUE TASKS (CRITICAL)
+- **Currently overdue:** {overdueTaskCount} task(s)
+{overdueTasks}
+
+CRITICAL: Overdue tasks are tasks that have passed their deadline and are NOT yet completed. This is a serious concern that MUST be addressed in the report. If overdueTaskCount > 0, this should be highlighted as a major concern in the Executive Summary and Risk Flags sections. Each overdue day represents missed commitments.
+
 ## Auto-Detected Flags
 {flags}
 

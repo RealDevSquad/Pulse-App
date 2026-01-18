@@ -53,7 +53,7 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
 
   const filters: FilterState = { status, sortOrder, assignee };
 
-  // Fetch extension requests and counts
+  // Fetch extension requests and counts (counts filtered by assignee if provided)
   const [result, counts] = await Promise.all([
     fetchExtensionRequests({
       status,
@@ -62,7 +62,7 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
       size: ITEMS_PER_PAGE,
       cursor,
     }),
-    getExtensionRequestCounts(),
+    getExtensionRequestCounts(assignee),
   ]);
 
   const { extensionRequests, next } = result;

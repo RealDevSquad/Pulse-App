@@ -249,10 +249,36 @@ export async function fetchExtensionRequestById(
 
 /**
  * Get extension request counts by status
+ * @param assignee - Optional assignee ID to filter counts for a specific user
  */
-export async function getExtensionRequestCounts(): Promise<
-  Record<ExtensionRequestStatus | 'all', number>
-> {
+export async function getExtensionRequestCounts(
+  assignee?: string
+): Promise<Record<ExtensionRequestStatus | 'all', number>> {
+  // If assignee is provided, calculate counts directly (not cached per-user)
+  if (assignee) {
+    try {
+      const baseQuery = db.collection('extensionRequests').where('assignee', '==', assignee);
+
+      const [totalCount, pendingCount, approvedCount, deniedCount] = await Promise.all([
+        baseQuery.count().get(),
+        baseQuery.where('status', '==', 'PENDING').count().get(),
+        baseQuery.where('status', '==', 'APPROVED').count().get(),
+        baseQuery.where('status', '==', 'DENIED').count().get(),
+      ]);
+
+      return {
+        all: totalCount.data().count,
+        PENDING: pendingCount.data().count,
+        APPROVED: approvedCount.data().count,
+        DENIED: deniedCount.data().count,
+      };
+    } catch (error) {
+      console.error('Error fetching extension request counts for assignee:', error);
+      return { all: 0, PENDING: 0, APPROVED: 0, DENIED: 0 };
+    }
+  }
+
+  // Global counts are cached
   const cachedCounts = unstable_cache(
     async () => {
       try {
