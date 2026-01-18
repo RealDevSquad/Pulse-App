@@ -21,6 +21,7 @@ A dashboard for Real Dev Squad admins to monitor team activity, track availabili
 
 - [Product Requirements (PRD)](./docs/PRD.md)
 - [Framework Decision](./docs/FRAMEWORK_DECISION.md)
+- [AI Member Summary](./docs/AI_MEMBER_SUMMARY.md) - How the AI performance report is calculated
 
 ## Getting Started
 

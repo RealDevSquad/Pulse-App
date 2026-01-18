@@ -132,6 +132,25 @@ See `docs/USER_ENRICHMENT_METRICS.md` for:
 - `task.startedOn` → When current assignee started
 - `task.endsOn` vs completion log timestamp → Red task detection
 - `extensionRequest.timestamp` vs `oldEndsOn` → Communication score (proactive vs late requests)
+
+## AI Member Performance Summary
+
+See `docs/AI_MEMBER_SUMMARY.md` for complete documentation on how the AI report is calculated.
+
+**Key concepts:**
+- **Deadline Violations** = Late completions + Late extension requests (tasks that ever went "red")
+- Even ONE deadline violation is flagged as a concern requiring mentorship
+- Green flags only awarded if ZERO violations in history
+- Multi-period analysis (30d, 3mo, 6mo, 12mo) to identify trends
+
+**Files:**
+- API: `src/app/api/ai/member-analysis/route.ts`
+- Chain: `src/lib/ai/chains/member-analysis.ts`
+- Prompt: `src/lib/ai/prompts/member-analysis.ts`
+- UI: `src/components/member-report/ai-report-section.tsx`
+
+## API Reference
+
 - Authentication and error handling
 - Request/response formats with examples
 - Query parameters for filtering and pagination
