@@ -121,7 +121,8 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  // Track collapsed sections instead (all open by default)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const sections = useMemo(() => {
     if (!report) return [];
@@ -136,7 +137,7 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
   );
 
   const toggleSection = (title: string) => {
-    setExpandedSections((prev) => {
+    setCollapsedSections((prev) => {
       const next = new Set(prev);
       if (next.has(title)) {
         next.delete(title);
@@ -151,7 +152,7 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
     setIsGenerating(true);
     setError(null);
     setReport('');
-    setExpandedSections(new Set());
+    setCollapsedSections(new Set());
 
     try {
       const response = await fetch('/api/ai/member-analysis', {
@@ -202,8 +203,6 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
       }
 
       setHasGenerated(true);
-      // Auto-expand the first few important sections
-      setExpandedSections(new Set(['Performance Trend Analysis', 'Strengths', 'Activity Analysis']));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -356,7 +355,7 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
 
             {/* Other Sections - Collapsible Cards */}
             {otherSections.map((section, index) => {
-              const isExpanded = expandedSections.has(section.title);
+              const isExpanded = !collapsedSections.has(section.title);
               const Icon = section.icon || Activity;
               const isTrendSection = section.title.toLowerCase().includes('trend');
               const isRiskSection = section.title.toLowerCase().includes('risk');
