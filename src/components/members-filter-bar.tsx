@@ -19,6 +19,7 @@ interface FilterState {
   archived: boolean;
   hideSuperusers: boolean;
   search: string;
+  showHidden: boolean;
 }
 
 interface SearchSuggestion {
@@ -37,6 +38,7 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
   params.set('inDiscord', String(overrides.inDiscord ?? filters.inDiscord));
   params.set('archived', String(overrides.archived ?? filters.archived));
   params.set('hideSuperusers', String(overrides.hideSuperusers ?? filters.hideSuperusers));
+  params.set('showHidden', String(overrides.showHidden ?? filters.showHidden));
   params.set('page', '1');
   const searchVal = overrides.search ?? filters.search;
   if (searchVal) {
@@ -58,7 +60,13 @@ function getInitials(firstName?: string, lastName?: string, username?: string): 
   return '??';
 }
 
-export function MembersFilterBar({ filters }: { filters: FilterState }) {
+interface MembersFilterBarProps {
+  filters: FilterState;
+  hiddenCount?: number;
+  isRoot?: boolean;
+}
+
+export function MembersFilterBar({ filters, hiddenCount = 0, isRoot = false }: MembersFilterBarProps) {
   const router = useRouter();
   const [isSearchExpanded, setIsSearchExpanded] = useState(!!filters.search);
   const [query, setQuery] = useState(filters.search);
@@ -300,6 +308,22 @@ export function MembersFilterBar({ filters }: { filters: FilterState }) {
           Hide Superusers
         </Label>
       </div>
+
+      {/* Show hidden toggle - visible to any user when there are hidden users */}
+      {hiddenCount > 0 && (
+        <div className="flex items-center gap-2">
+          <Switch
+            id="show-hidden"
+            checked={filters.showHidden}
+            onCheckedChange={(checked) => {
+              router.push(buildUrl(filters, { showHidden: checked }));
+            }}
+          />
+          <Label htmlFor="show-hidden" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+            Show hidden ({hiddenCount})
+          </Label>
+        </div>
+      )}
     </div>
   );
 }

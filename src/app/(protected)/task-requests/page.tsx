@@ -23,13 +23,16 @@ interface PageProps {
 const ITEMS_PER_PAGE = 20;
 
 export default async function TaskRequestsPage({ searchParams }: PageProps) {
+  // Fetch session and params in parallel
+  const [session, params] = await Promise.all([
+    getSession(),
+    searchParams,
+  ]);
+
   // Access check: only admins can view task requests
-  const session = await getSession();
   if (!session?.userId || !(await isAdminUser(session.userId))) {
     redirect('/');
   }
-
-  const params = await searchParams;
 
   // Parse filter params
   const status = (['all', 'PENDING', 'APPROVED', 'DENIED'].includes(params.status || '')

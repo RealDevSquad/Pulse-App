@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { UserInfoPopover } from '@/components/user-info-popover';
+import { MemberHideMenu } from '@/components/member-hide-menu';
 import { TableRowMotion } from '@/components/ui/motion';
 import type { UserWithActivity } from '@/lib/users-cache';
 
@@ -25,6 +26,7 @@ interface FilterState {
   archived: boolean;
   hideSuperusers: boolean;
   search: string;
+  showHidden: boolean;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
@@ -34,6 +36,7 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState> = {}) {
   params.set('inDiscord', String(overrides.inDiscord ?? filters.inDiscord));
   params.set('archived', String(overrides.archived ?? filters.archived));
   params.set('hideSuperusers', String(overrides.hideSuperusers ?? filters.hideSuperusers));
+  params.set('showHidden', String(overrides.showHidden ?? filters.showHidden));
   params.set('page', '1');
   // Preserve search param
   const searchVal = overrides.search ?? filters.search;
@@ -47,6 +50,7 @@ interface MembersTableProps {
   users: UserWithActivity[];
   filters: FilterState;
   isRoot?: boolean;
+  hiddenUserIds?: Set<string>;
 }
 
 function getInitials(firstName?: string, lastName?: string, username?: string): string {
@@ -137,7 +141,7 @@ function SortableHeader({
   );
 }
 
-function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<UserWithActivity>[] {
+function createColumns(filters: FilterState, isRoot: boolean, hiddenUserIds: Set<string>): ColumnDef<UserWithActivity>[] {
   const columns: ColumnDef<UserWithActivity>[] = [
     {
       id: 'avatar',
@@ -157,14 +161,26 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<UserWit
     },
   ];
 
-  // Only show info popover for root users
+  // Only show actions column for root users
   if (isRoot) {
     columns.push({
       id: 'actions',
       header: '',
-      size: 50,
+      size: 80,
       enableResizing: false,
-      cell: ({ row }) => <UserInfoPopover userId={row.original.id} />,
+      cell: ({ row }) => {
+        const isHidden = hiddenUserIds.has(row.original.id);
+        return (
+          <div className="flex items-center gap-1">
+            <UserInfoPopover userId={row.original.id} />
+            <MemberHideMenu
+              userId={row.original.id}
+              isHidden={isHidden}
+              username={row.original.username}
+            />
+          </div>
+        );
+      },
     });
   }
 
@@ -174,35 +190,45 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<UserWit
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
       header: () => <SortableHeader label="Name" sortKey="first_name" filters={filters} />,
       size: 200,
-      cell: ({ row }) => (
-        <div className="group">
-          <Link 
-            href={`/member/${row.original.id}`}
-            className="font-medium hover:text-primary hover:underline transition-colors"
-          >
-            {row.original.first_name} {row.original.last_name}
-          </Link>
-          <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-all duration-200 ease-out">
-            <div className="overflow-hidden">
-              <div className="text-sm text-muted-foreground pt-1 space-y-0.5">
-                <div>{row.original.username}</div>
-                {row.original.github_id && (
-                  <a
-                    href={`https://github.com/${row.original.github_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors flex items-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Github className="h-3 w-3" />
-                    <span>{row.original.github_id}</span>
-                  </a>
-                )}
+      cell: ({ row }) => {
+        const isHidden = hiddenUserIds.has(row.original.id);
+        return (
+          <div className="group">
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/member/${row.original.id}`}
+                className="font-medium hover:text-primary hover:underline transition-colors"
+              >
+                {row.original.first_name} {row.original.last_name}
+              </Link>
+              {isHidden && (
+                <Badge variant="outline" className="text-xs border-orange-300 text-orange-500 bg-transparent">
+                  Hidden
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-all duration-200 ease-out">
+              <div className="overflow-hidden">
+                <div className="text-sm text-muted-foreground pt-1 space-y-0.5">
+                  <div>{row.original.username}</div>
+                  {row.original.github_id && (
+                    <a
+                      href={`https://github.com/${row.original.github_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-foreground transition-colors flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Github className="h-3 w-3" />
+                      <span>{row.original.github_id}</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       id: 'roles',
@@ -352,8 +378,8 @@ function createColumns(filters: FilterState, isRoot: boolean): ColumnDef<UserWit
   return columns;
 }
 
-export function MembersTable({ users, filters, isRoot = false }: MembersTableProps) {
-  const columns = createColumns(filters, isRoot);
+export function MembersTable({ users, filters, isRoot = false, hiddenUserIds = new Set() }: MembersTableProps) {
+  const columns = createColumns(filters, isRoot, hiddenUserIds);
 
   const table = useReactTable({
     data: users,

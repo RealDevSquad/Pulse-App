@@ -67,12 +67,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for token in cookie, Authorization header, or dev token
+  // Check for token in cookie or Authorization header
   const cookieName = process.env.JWT_AUTH_COOKIE_NAME || 'rds-session';
-  const devToken = process.env.DEV_ONLY_JWT_TOKEN; // Available in dev via .env.local
   const cookieToken = request.cookies.get(cookieName)?.value;
   const authHeader = request.headers.get('Authorization')?.replace('Bearer ', '');
-  const token = cookieToken || authHeader || devToken;
+  const token = cookieToken || authHeader;
 
   if (!token) {
     if (!pathname.startsWith('/api/')) {

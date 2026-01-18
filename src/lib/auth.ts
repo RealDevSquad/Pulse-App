@@ -40,8 +40,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function getSession(): Promise<JWTPayload | null> {
   const cookieStore = await cookies();
   const cookieName = process.env.JWT_AUTH_COOKIE_NAME || 'rds-session';
-  const devToken = process.env.NODE_ENV === 'development' ? process.env.DEV_ONLY_JWT_TOKEN : undefined;
-  const token = cookieStore.get(cookieName)?.value || devToken;
+  const token = cookieStore.get(cookieName)?.value;
 
   if (!token) {
     return null;

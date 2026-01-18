@@ -34,10 +34,42 @@ cp .env.example .env.local
 
 # Start dev server
 pnpm dev
+```
 
-# Run scripts
-npx ts-node scripts/test-firestore.ts
-npx ts-node scripts/list-collections.ts
+## Local Development with RDS API
+
+The RDS auth cookie (`rds-session`) is HTTPS-only and scoped to `.realdevsquad.com`, so it won't work with `http://localhost:3000`. To call RDS APIs locally, run the dev server on `dev.realdevsquad.com`:
+
+**1. Add hosts entry (one-time setup):**
+
+```bash
+sudo sh -c 'echo "127.0.0.1 dev.realdevsquad.com" >> /etc/hosts'
+```
+
+**2. Start dev server with HTTPS:**
+
+```bash
+pnpm dev --experimental-https
+```
+
+On first run, it may prompt for your password to trust the self-signed certificate.
+
+**3. Access the app:**
+
+Open `https://dev.realdevsquad.com:3000` in your browser. Accept the self-signed certificate warning.
+
+**4. Login:**
+
+Go to `https://api.realdevsquad.com/auth/github/login?redirectURL=https://dev.realdevsquad.com:3000`
+
+After GitHub auth, the cookie will be set for `.realdevsquad.com` and work with your local server.
+
+## Deployment
+
+The app is deployed on [Railway](https://railway.app). To deploy:
+
+```bash
+railway up
 ```
 
 ## License

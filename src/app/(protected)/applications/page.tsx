@@ -31,13 +31,16 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
 }
 
 export default async function ApplicationsPage({ searchParams }: PageProps) {
+  // Fetch session and params in parallel
+  const [session, params] = await Promise.all([
+    getSession(),
+    searchParams,
+  ]);
+
   // Access check: only root users can view applications
-  const session = await getSession();
   if (!session?.userId || !(await isRootUser(session.userId))) {
     redirect('/');
   }
-
-  const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const status = (['all', 'pending', 'accepted', 'rejected'].includes(params.status || '')
     ? params.status

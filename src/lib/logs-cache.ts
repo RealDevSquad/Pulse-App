@@ -329,7 +329,7 @@ export async function getOrgHealthMetrics(): Promise<OrgHealthMetrics> {
  */
 export async function getUserActivityFromLogs(userId: string): Promise<UserActivityFromLogs> {
   const logs = await fetchRecentLogs();
-  
+
   // Filter logs where user is the actor (meta.userId)
   const userLogs = logs.filter(log => log.meta.userId === userId);
   
@@ -414,4 +414,123 @@ export async function getUserActivityFromLogs(userId: string): Promise<UserActiv
     tasksAssigned,
     dailyActivity,
   };
+}
+
+/**
+ * Metrics for a specific time period
+ */
+export interface PeriodMetrics {
+  label: string;
+  days: number;
+  tasksStarted: number;
+  tasksCompleted: number;
+  taskUpdates: number;
+  extensionRequests: number;
+}
+
+/**
+ * Multi-period activity metrics for trend analysis
+ */
+export interface MultiPeriodMetrics {
+  periods: PeriodMetrics[];
+}
+
+/**
+ * Fetch user activity logs for a specific time period
+ * This directly queries Firestore for longer time ranges
+ */
+async function fetchUserLogsForPeriod(userId: string, daysAgo: number): Promise<LogEntry[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - daysAgo);
+
+  // Query logs where user is the actor
+  const snapshot = await db
+    .collection('logs')
+    .where('meta.userId', '==', userId)
+    .where('timestamp', '>=', startDate)
+    .orderBy('timestamp', 'desc')
+    .limit(5000)
+    .get();
+
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      type: data.type || 'unknown',
+      timestamp: data.timestamp?._seconds ? data.timestamp._seconds * 1000 : 0,
+      body: data.body || {},
+      meta: data.meta || {},
+    };
+  });
+}
+
+/**
+ * Calculate metrics from a set of logs
+ */
+function calculateMetricsFromLogs(logs: LogEntry[]): Omit<PeriodMetrics, 'label' | 'days'> {
+  const tasksStartedSet = new Set<string>();
+  const tasksCompletedSet = new Set<string>();
+  let taskUpdates = 0;
+  let extensionRequests = 0;
+
+  for (const log of logs) {
+    switch (log.type) {
+      case 'task':
+        taskUpdates++;
+        if (log.body?.new?.status === 'IN_PROGRESS' && log.meta.taskId) {
+          tasksStartedSet.add(log.meta.taskId);
+        } else if (
+          (log.body?.new?.status === 'COMPLETED' ||
+           log.body?.new?.status === 'DONE' ||
+           log.body?.new?.status === 'VERIFIED') &&
+          log.meta.taskId
+        ) {
+          tasksCompletedSet.add(log.meta.taskId);
+        }
+        break;
+      case 'extensionRequests':
+        if (log.body?.status === 'PENDING') {
+          extensionRequests++;
+        }
+        break;
+    }
+  }
+
+  return {
+    tasksStarted: tasksStartedSet.size,
+    tasksCompleted: tasksCompletedSet.size,
+    taskUpdates,
+    extensionRequests,
+  };
+}
+
+/**
+ * Get user activity metrics for multiple time periods
+ * Used for trend analysis in AI reports
+ */
+export async function getUserMultiPeriodMetrics(userId: string): Promise<MultiPeriodMetrics> {
+  // Fetch all logs for the longest period (1 year)
+  const allLogs = await fetchUserLogsForPeriod(userId, 365);
+
+  const now = Date.now();
+  const periods: { label: string; days: number }[] = [
+    { label: 'Last 12 months', days: 365 },
+    { label: 'Last 6 months', days: 180 },
+    { label: 'Last 3 months', days: 90 },
+    { label: 'Last 30 days', days: 30 },
+  ];
+
+  const results: PeriodMetrics[] = periods.map(({ label, days }) => {
+    const cutoff = now - (days * 24 * 60 * 60 * 1000);
+    const periodLogs = allLogs.filter(log => log.timestamp >= cutoff);
+    const metrics = calculateMetricsFromLogs(periodLogs);
+
+    return {
+      label,
+      days,
+      ...metrics,
+    };
+  });
+
+  return { periods: results };
 }

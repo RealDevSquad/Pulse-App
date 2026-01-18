@@ -1,7 +1,8 @@
 import { getSession } from '@/lib/auth';
 import { isRootUser } from '@/lib/users';
 import { getCachedUsers, type UserSortField, type SortOrder } from '@/lib/users-cache';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { db } from '@/lib/firebase-admin';
+import { ChevronLeft, ChevronRight, Clock, MoreVertical } from 'lucide-react';
 import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,40 @@ import { UserInfoPopover } from '@/components/user-info-popover';
 import { MembersFilterBar } from '@/components/members-filter-bar';
 import { MembersSearch } from '@/components/members-search';
 import { MembersTable } from '@/components/members-table';
+import { MemberHideMenu } from '@/components/member-hide-menu';
 import Link from 'next/link';
+
+const MEMBERS_HIDDEN_META_TYPE = 'members_hidden';
+
+/**
+ * Fetch hidden user IDs from Firestore
+ */
+async function getHiddenUserIds(userIds: string[]): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+
+  const hiddenUserIds = new Set<string>();
+
+  await Promise.all(
+    userIds.map(async (userId) => {
+      const snapshot = await db
+        .collection('pulseAppOnly')
+        .where('meta.type', '==', MEMBERS_HIDDEN_META_TYPE)
+        .where('targetId', '==', userId)
+        .orderBy('timestamp', 'desc')
+        .limit(1)
+        .get();
+
+      if (!snapshot.empty) {
+        const latestEvent = snapshot.docs[0].data();
+        if (latestEvent.action === 'hide') {
+          hiddenUserIds.add(userId);
+        }
+      }
+    })
+  );
+
+  return hiddenUserIds;
+}
 
 interface PageProps {
   searchParams: Promise<{
@@ -21,6 +55,7 @@ interface PageProps {
     archived?: string;
     hideSuperusers?: string;
     search?: string;
+    showHidden?: string;
   }>;
 }
 
@@ -43,6 +78,7 @@ interface FilterState {
   archived: boolean;
   hideSuperusers: boolean;
   search: string;
+  showHidden: boolean;
 }
 
 function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page: number }> = {}) {
@@ -52,6 +88,7 @@ function buildUrl(filters: FilterState, overrides: Partial<FilterState & { page:
   params.set('inDiscord', String(overrides.inDiscord ?? filters.inDiscord));
   params.set('archived', String(overrides.archived ?? filters.archived));
   params.set('hideSuperusers', String(overrides.hideSuperusers ?? filters.hideSuperusers));
+  params.set('showHidden', String(overrides.showHidden ?? filters.showHidden));
   params.set('page', String(overrides.page ?? 1));
   // Preserve search param
   const searchVal = overrides.search ?? filters.search;
@@ -100,34 +137,52 @@ function formatLastActive(timestamp?: number): string {
 }
 
 export default async function MembersPage({ searchParams }: PageProps) {
-  // Access is already checked in layout - session is guaranteed
-  const session = (await getSession())!;
-  const isRoot = await isRootUser(session.userId);
-  const params = await searchParams;
+  // Fetch session and params in parallel
+  const [session, params] = await Promise.all([
+    getSession(),
+    searchParams,
+  ]);
 
   const page = Math.max(1, parseInt(params.page || '1', 10));
   const sortBy = (sortableColumns.find(c => c.key === params.sortBy)?.key || 'created_at') as UserSortField;
   const sortOrder = (params.sortOrder === 'asc' ? 'asc' : 'desc') as SortOrder;
 
-  // Parse filter params with defaults: inDiscord=true, archived=false, hideSuperusers=true
+  // Parse filter params with defaults: inDiscord=true, archived=false, hideSuperusers=true, showHidden=false
   const inDiscord = params.inDiscord !== 'false';
   const archived = params.archived === 'true';
   const hideSuperusers = params.hideSuperusers !== 'false';
+  const showHidden = params.showHidden === 'true';
   const search = params.search || '';
 
-  const filters: FilterState = { sortBy, sortOrder, inDiscord, archived, hideSuperusers, search };
+  const filters: FilterState = { sortBy, sortOrder, inDiscord, archived, hideSuperusers, search, showHidden };
 
-  const { users, total, hasMore } = await getCachedUsers({
-    limit: ITEMS_PER_PAGE,
-    offset: (page - 1) * ITEMS_PER_PAGE,
-    sortBy,
-    sortOrder,
-    inDiscord,
-    archived,
-    hideSuperusers,
-    search,
-  });
+  // Fetch isRoot and users data in parallel
+  const [isRoot, { users: allUsers, total: totalBeforeHidden, hasMore: hasMoreBeforeHidden }] = await Promise.all([
+    isRootUser(session!.userId),
+    getCachedUsers({
+      limit: ITEMS_PER_PAGE,
+      offset: (page - 1) * ITEMS_PER_PAGE,
+      sortBy,
+      sortOrder,
+      inDiscord,
+      archived,
+      hideSuperusers,
+      search,
+    }),
+  ]);
 
+  // Fetch hidden user IDs for all users (any user can see the filtered list)
+  const hiddenUserIds = await getHiddenUserIds(allUsers.map(u => u.id));
+
+  // Filter out hidden users unless showHidden is true
+  const users = showHidden
+    ? allUsers
+    : allUsers.filter(u => !hiddenUserIds.has(u.id));
+
+  // Calculate totals - note: hidden count is only for the current page's users
+  const hiddenCount = hiddenUserIds.size;
+  const total = showHidden ? totalBeforeHidden : totalBeforeHidden - hiddenCount;
+  const hasMore = showHidden ? hasMoreBeforeHidden : hasMoreBeforeHidden;
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
@@ -146,11 +201,11 @@ export default async function MembersPage({ searchParams }: PageProps) {
       </div>
 
       {/* Filter Bar with mobile search */}
-      <MembersFilterBar filters={filters} />
+      <MembersFilterBar filters={filters} hiddenCount={hiddenCount} isRoot={isRoot} />
 
       {/* Desktop Table (Resizable) */}
       <div className="hidden md:block">
-        <MembersTable users={users} filters={filters} isRoot={isRoot} />
+        <MembersTable users={users} filters={filters} isRoot={isRoot} hiddenUserIds={hiddenUserIds} />
       </div>
 
       {/* Mobile Card View */}
@@ -159,16 +214,16 @@ export default async function MembersPage({ searchParams }: PageProps) {
           const lastActive = user.lastTaskUpdate || user.lastProgress || undefined;
           const lastActiveText = formatLastActive(lastActive);
           const isRecentlyActive = lastActive && (Date.now() - lastActive) < 7 * 24 * 60 * 60 * 1000;
-          
+          const isUserHidden = hiddenUserIds.has(user.id);
+
           return (
-            <Link 
-              key={user.id} 
-              href={`/member/${user.id}`}
-              className="block p-4 rounded-lg bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden"
+            <div
+              key={user.id}
+              className="p-4 rounded-lg bg-card border shadow-sm hover:shadow-md transition-all overflow-hidden"
             >
               {/* Header: Avatar + Name */}
               <div className="flex items-center gap-3">
-                <div className="relative">
+                <Link href={`/member/${user.id}`} className="relative shrink-0">
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={user.picture?.url} alt={user.username} />
                     <AvatarFallback className="text-base font-medium">
@@ -179,17 +234,20 @@ export default async function MembersPage({ searchParams }: PageProps) {
                   {isRecentlyActive && (
                     <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-card" />
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
+                </Link>
+                <Link href={`/member/${user.id}`} className="flex-1 min-w-0">
                   <div className="font-semibold text-foreground truncate">
                     {user.first_name} {user.last_name}
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
                     @{user.username}
                   </div>
-                </div>
+                </Link>
                 {isRoot && (
-                  <UserInfoPopover userId={user.id} />
+                  <div className="flex items-center gap-1">
+                    <UserInfoPopover userId={user.id} />
+                    <MemberHideMenu userId={user.id} isHidden={isUserHidden} username={user.username} />
+                  </div>
                 )}
               </div>
 
@@ -215,15 +273,22 @@ export default async function MembersPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              {/* Archived badge if applicable */}
-              {user.roles?.archived && (
-                <div className="mt-2">
-                  <Badge variant="outline" className="text-xs border-red-300 text-red-400 bg-transparent">
-                    Archived
-                  </Badge>
+              {/* Badges row */}
+              {(user.roles?.archived || isUserHidden) && (
+                <div className="mt-2 flex gap-2">
+                  {isUserHidden && (
+                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-500 bg-transparent">
+                      Hidden
+                    </Badge>
+                  )}
+                  {user.roles?.archived && (
+                    <Badge variant="outline" className="text-xs border-red-300 text-red-400 bg-transparent">
+                      Archived
+                    </Badge>
+                  )}
                 </div>
               )}
-            </Link>
+            </div>
           );
         })}
 
