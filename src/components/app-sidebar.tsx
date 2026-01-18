@@ -116,13 +116,16 @@ export function AppSidebar({ userId, username, isRoot = false, isAdmin = false }
     { title: 'Members', url: '/members', Icon: UsersIcon },
   ];
 
-  // Admin items - Task Requests & Extension Requests for admins, Applications for root only
+  // Admin items - Task Requests & Extension Requests for admins, Applications & Availability for root only
   const adminItems = [
     ...(isAdmin ? [
       { title: 'Task Requests', url: '/task-requests', Icon: ClipboardCheckIcon },
       { title: 'Extension Requests', url: '/extension-requests', Icon: CalendarDaysIcon },
     ] : []),
-    ...(isRoot ? [{ title: 'Applications', url: '/applications', Icon: FileTextIcon }] : []),
+    ...(isRoot ? [
+      { title: 'Availability', url: '/availability', Icon: UsersIcon },
+      { title: 'Applications', url: '/applications', Icon: FileTextIcon },
+    ] : []),
     { title: 'Settings', url: '/settings', Icon: SettingsIcon },
   ];
 
