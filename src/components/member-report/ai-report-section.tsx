@@ -647,18 +647,26 @@ export function AIReportSection({ userId }: AIReportSectionProps) {
               </div>
             )}
 
-            {/* Historical Late Completions Warning */}
-            {metrics.tasks.historicallyLate > 0 && (
-              <div className="rounded-lg border-2 border-orange-500 bg-orange-50 dark:bg-orange-950/30 p-4 flex items-center gap-3">
-                <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/50">
+            {/* Deadline Violation History Warning */}
+            {(metrics.tasks.historicallyLate > 0 || metrics.extensions.late > 0) && (
+              <div className="rounded-lg border-2 border-orange-500 bg-orange-50 dark:bg-orange-950/30 p-4 flex items-start gap-3">
+                <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/50 shrink-0">
                   <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
                   <p className="font-semibold text-orange-700 dark:text-orange-300">
-                    {metrics.tasks.historicallyLate} Task{metrics.tasks.historicallyLate !== 1 ? 's' : ''} Completed Late
+                    {metrics.tasks.historicallyLate + metrics.extensions.late} Deadline Violation{(metrics.tasks.historicallyLate + metrics.extensions.late) !== 1 ? 's' : ''} in History
                   </p>
-                  <p className="text-sm text-orange-600 dark:text-orange-400">
-                    History of missing deadlines - needs mentorship on time management
+                  <ul className="text-sm text-orange-600 dark:text-orange-400 mt-1 space-y-0.5">
+                    {metrics.tasks.historicallyLate > 0 && (
+                      <li>• {metrics.tasks.historicallyLate} task{metrics.tasks.historicallyLate !== 1 ? 's' : ''} completed after deadline</li>
+                    )}
+                    {metrics.extensions.late > 0 && (
+                      <li>• {metrics.extensions.late} extension{metrics.extensions.late !== 1 ? 's' : ''} requested after task went overdue</li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-orange-500 dark:text-orange-500 mt-2">
+                    Needs mentorship on proactive communication and time management
                   </p>
                 </div>
               </div>

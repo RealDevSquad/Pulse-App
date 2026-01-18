@@ -403,27 +403,34 @@ function detectFlags(
   const red: string[] = [];
   const green: string[] = [];
 
+  // Calculate total deadline violations (late completions + late extensions)
+  const totalDeadlineViolations = metrics.historicalLateCount + metrics.extensionLate;
+
   // Red flags - Overdue tasks are CRITICAL
   if (metrics.overdueTaskCount > 0) {
     red.push(`🚨 ${metrics.overdueTaskCount} OVERDUE task(s) - requires immediate attention`);
   }
-  // Historical late completions - even ONE is a concern
-  if (metrics.historicalLateCount > 0) {
-    red.push(`⚠️ ${metrics.historicalLateCount} task(s) completed AFTER deadline - pattern of missing deadlines`);
+  // Deadline violations - even ONE is a serious concern
+  if (totalDeadlineViolations > 0) {
+    const parts: string[] = [];
+    if (metrics.historicalLateCount > 0) {
+      parts.push(`${metrics.historicalLateCount} completed late`);
+    }
+    if (metrics.extensionLate > 0) {
+      parts.push(`${metrics.extensionLate} went overdue before extension`);
+    }
+    red.push(`⚠️ ${totalDeadlineViolations} deadline violation(s): ${parts.join(', ')} - needs mentorship`);
   }
   if (metrics.daysSinceLastUpdate !== null && metrics.daysSinceLastUpdate > 14) {
     red.push(`No progress updates for ${metrics.daysSinceLastUpdate} days`);
-  }
-  if (metrics.extensionTotal > 0 && metrics.extensionLate / metrics.extensionTotal > 0.5) {
-    red.push('More than 50% of extensions requested after deadline');
   }
   if (metrics.onTimeRate < 50 && metrics.updateCount > 0) {
     red.push(`Low on-time completion rate (${metrics.onTimeRate}%)`);
   }
 
-  // Green flags - only if NO history of late completions
-  if (metrics.overdueTaskCount === 0 && metrics.historicalLateCount === 0 && metrics.onTimeRate >= 80) {
-    green.push('Perfect deadline record - no overdue or late completions');
+  // Green flags - only if NO deadline violations at all
+  if (metrics.overdueTaskCount === 0 && totalDeadlineViolations === 0 && metrics.onTimeRate >= 80) {
+    green.push('Perfect deadline record - no violations in history');
   }
   if (metrics.extensionTotal > 0 && metrics.extensionLate === 0) {
     green.push('100% of extensions requested proactively (before deadline)');
@@ -434,7 +441,7 @@ function detectFlags(
   if (metrics.taskRequestsMade > 0 && metrics.taskRequestsApproved === metrics.taskRequestsMade) {
     green.push(`Self-starter: ${metrics.taskRequestsMade} task requests, all approved`);
   }
-  if (metrics.onTimeRate >= 90 && metrics.historicalLateCount === 0) {
+  if (metrics.onTimeRate >= 90 && totalDeadlineViolations === 0) {
     green.push(`Excellent on-time completion rate (${metrics.onTimeRate}%)`);
   }
 

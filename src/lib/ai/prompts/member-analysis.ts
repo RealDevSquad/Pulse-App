@@ -94,15 +94,22 @@ NOTE: High "days to start" may indicate procrastination or competing priorities.
 
 CRITICAL: Overdue tasks are tasks that have passed their deadline and are NOT yet completed. This is a serious concern that MUST be addressed in the report. If overdueTaskCount > 0, this should be highlighted as a major concern in the Executive Summary and Risk Flags sections. Each overdue day represents missed commitments.
 
-## 🚨 HISTORICAL LATE COMPLETIONS (SERIOUS CONCERN)
-- **Tasks completed AFTER deadline:** {historicalLateCount}
+## 🚨 DEADLINE VIOLATION HISTORY (SERIOUS CONCERN)
+
+### Tasks Completed After Deadline: {historicalLateCount}
 {historicalLateTasks}
 
-SERIOUS: This tracks tasks that WERE eventually completed but AFTER their deadline passed. Even ONE late completion indicates a pattern that needs correction. This member has a history of missing deadlines. If historicalLateCount > 0:
-- This MUST be mentioned prominently in the Executive Summary
+### Tasks That Went Overdue Before Extension: {lateExtensionRequests}
+(These are tasks where the member let the deadline pass BEFORE requesting an extension. The task was "red" at some point.)
+
+**TOTAL DEADLINE VIOLATIONS: {historicalLateCount} late completions + {lateExtensionRequests} late extensions**
+
+SERIOUS: ANY deadline violation - whether the task was completed late OR went overdue before getting an extension - indicates a problem. Even ONE violation means:
+- This MUST be mentioned prominently in the Executive Summary as a concern
+- Do NOT praise "reliability", "meeting deadlines", or "strong performance" if violations > 0
 - This is a behavioral pattern requiring mentorship intervention
-- Do NOT praise this member's "reliability" if they have late completions
-- Recommend specific corrective actions (better estimation, earlier escalation, etc.)
+- The member needs coaching on: realistic estimation, proactive communication, asking for help BEFORE deadlines
+- Even if they eventually complete work, letting tasks go "red" damages team trust and planning
 
 ## Auto-Detected Flags
 {flags}
