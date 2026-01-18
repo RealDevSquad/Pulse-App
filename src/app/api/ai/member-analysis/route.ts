@@ -41,14 +41,17 @@ async function getExtensionMetrics(userId: string): Promise<{
   late: number;
   extensionIds: string[];
 }> {
-  // Fetch last 30 days of extension requests for this user
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Fetch last 90 days of extension requests for this user
+  // Using 90 days instead of 30 to capture recent activity for AI analysis
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  // Convert to epoch seconds for Firestore comparison (extension requests use epoch seconds)
+  const ninetyDaysAgoSeconds = Math.floor(ninetyDaysAgo.getTime() / 1000);
 
   const snapshot = await db
     .collection('extensionRequests')
     .where('assignee', '==', userId)
-    .where('timestamp', '>=', thirtyDaysAgo)
+    .where('timestamp', '>=', ninetyDaysAgoSeconds)
     .get();
 
   let total = 0;
@@ -87,13 +90,14 @@ interface ProgressSummary {
  * Returns recent blockers, update quality metrics, etc.
  */
 async function getProgressSummary(userId: string): Promise<ProgressSummary> {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Using 90 days to capture recent activity for AI analysis
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
   const snapshot = await db
     .collection('progresses')
     .where('userId', '==', userId)
-    .where('createdAt', '>=', thirtyDaysAgo.getTime())
+    .where('createdAt', '>=', ninetyDaysAgo.getTime())
     .orderBy('createdAt', 'desc')
     .limit(50)
     .get();
@@ -232,13 +236,14 @@ interface InitiativeMetrics {
  * Fetch task request history to measure initiative.
  */
 async function getInitiativeMetrics(userId: string): Promise<InitiativeMetrics> {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Using 90 days to capture recent activity for AI analysis
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
   const snapshot = await db
     .collection('taskRequests')
     .where('requestedBy', '==', userId)
-    .where('createdAt', '>=', thirtyDaysAgo.getTime())
+    .where('createdAt', '>=', ninetyDaysAgo.getTime())
     .get();
 
   let approved = 0;
@@ -272,7 +277,8 @@ interface TimelineMetrics {
  */
 function calculateTimelineMetrics(tasks: any[]): TimelineMetrics {
   const completedStatuses = ['COMPLETED', 'DONE', 'VERIFIED'];
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  // Using 90 days to capture recent activity for AI analysis
+  const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
 
   let totalDaysToStart = 0;
   let startedCount = 0;
@@ -296,7 +302,7 @@ function calculateTimelineMetrics(tasks: any[]): TimelineMetrics {
     }
 
     // On-time completion (only for recently completed tasks)
-    if (completedStatuses.includes(task.status?.toUpperCase()) && updatedAt >= thirtyDaysAgo) {
+    if (completedStatuses.includes(task.status?.toUpperCase()) && updatedAt >= ninetyDaysAgo) {
       if (endsOn) {
         if (updatedAt <= endsOn) {
           completedOnTime++;
