@@ -179,6 +179,24 @@ All features MUST be mobile responsive. Follow these breakpoints:
 - Prefer server components where possible
 - Use `@/` path alias for imports
 
+## Interactive Elements (Critical)
+
+**All clickable elements MUST show `cursor-pointer` on hover.**
+
+Global CSS (`globals.css`) sets `cursor: pointer` for `button`, `[role="button"]`, and `a` elements automatically.
+
+For other clickable elements (divs with onClick, etc.), add `cursor-pointer` explicitly:
+
+```tsx
+// ❌ BAD - Div with onClick but no cursor
+<div onClick={handleClick} className="p-2">Click me</div>
+
+// ✅ GOOD - Div with onClick and cursor-pointer
+<div onClick={handleClick} className="p-2 cursor-pointer">Click me</div>
+```
+
+**Always verify hover states visually** before marking a feature complete.
+
 ## Server Component Performance (Critical)
 
 **Always parallelize independent data fetches** in server components using `Promise.all`:

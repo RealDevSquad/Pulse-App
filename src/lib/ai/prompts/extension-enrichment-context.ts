@@ -81,7 +81,11 @@ export function calculateExtensionPatterns(
     }
 
     // Count root causes
-    rootCauseCounts[enrichment.rootCause] = (rootCauseCounts[enrichment.rootCause] || 0) + 1;
+    for (const rootCause of enrichment.rootCauses) {
+      if (rootCause in rootCauseCounts) {
+        rootCauseCounts[rootCause as keyof typeof rootCauseCounts]++;
+      }
+    }
 
     // Sum weights for average
     totalWeight += enrichment.maxAvoidabilityWeight;

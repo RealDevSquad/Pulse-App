@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   AVOIDABILITY_OPTIONS,
   ROOT_CAUSE_OPTIONS,
@@ -35,7 +34,7 @@ import {
 
 interface AISuggestion {
   avoidabilities: AvoidabilityType[];
-  rootCause: RootCauseType;
+  rootCauses: RootCauseType[];
   reasoning: string;
 }
 
@@ -83,8 +82,8 @@ export function ExtensionEnrichmentDialog({
   const [selectedAvoidabilities, setSelectedAvoidabilities] = useState<AvoidabilityType[]>(
     existingEnrichment?.avoidabilities || []
   );
-  const [rootCause, setRootCause] = useState<RootCauseType | ''>(
-    existingEnrichment?.rootCause || ''
+  const [selectedRootCauses, setSelectedRootCauses] = useState<RootCauseType[]>(
+    existingEnrichment?.rootCauses || []
   );
   const [notes, setNotes] = useState(existingEnrichment?.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,7 +128,7 @@ export function ExtensionEnrichmentDialog({
         setAiSuggestion(suggestion);
 
         // Auto-apply suggestions if form is empty
-        if (selectedAvoidabilities.length === 0 && !rootCause) {
+        if (selectedAvoidabilities.length === 0 && selectedRootCauses.length === 0) {
           applySuggestion(suggestion);
         }
       }
@@ -142,7 +141,7 @@ export function ExtensionEnrichmentDialog({
 
   function applySuggestion(suggestion: AISuggestion) {
     setSelectedAvoidabilities(suggestion.avoidabilities);
-    setRootCause(suggestion.rootCause);
+    setSelectedRootCauses(suggestion.rootCauses);
     setSuggestionApplied(true);
 
     // Expand the weight groups containing the suggested avoidabilities
@@ -158,7 +157,15 @@ export function ExtensionEnrichmentDialog({
     );
   }, []);
 
-  const canSubmit = selectedAvoidabilities.length > 0 && rootCause !== '';
+  const toggleRootCause = useCallback((rootCause: RootCauseType) => {
+    setSelectedRootCauses((prev) =>
+      prev.includes(rootCause)
+        ? prev.filter((r) => r !== rootCause)
+        : [...prev, rootCause]
+    );
+  }, []);
+
+  const canSubmit = selectedAvoidabilities.length > 0 && selectedRootCauses.length > 0;
 
   // Group avoidability options by weight
   const avoidabilityByWeight = getAvoidabilityByWeight();
@@ -181,7 +188,7 @@ export function ExtensionEnrichmentDialog({
 
   const resetForm = useCallback(() => {
     setSelectedAvoidabilities(existingEnrichment?.avoidabilities || []);
-    setRootCause(existingEnrichment?.rootCause || '');
+    setSelectedRootCauses(existingEnrichment?.rootCauses || []);
     setNotes(existingEnrichment?.notes || '');
     setError(null);
     setSubmitSuccess(false);
@@ -207,7 +214,7 @@ export function ExtensionEnrichmentDialog({
           taskId,
           userId,
           avoidabilities: selectedAvoidabilities,
-          rootCause,
+          rootCauses: selectedRootCauses,
           notes: notes.trim() || undefined,
         }),
       });
@@ -398,37 +405,56 @@ export function ExtensionEnrichmentDialog({
             </div>
           </div>
 
-          {/* Root Cause */}
+          {/* Root Causes - Multi-select */}
           <div className="space-y-3">
             <Label className="text-base font-medium">
               Root Cause <span className="text-red-500">*</span>
             </Label>
             <p className="text-sm text-muted-foreground">
-              What was the primary cause of this extension?
+              Select all factors that caused this extension (can select multiple)
             </p>
 
-            <RadioGroup
-              value={rootCause}
-              onValueChange={(value: string) => setRootCause(value as RootCauseType)}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2"
-            >
-              {Object.entries(ROOT_CAUSE_OPTIONS).map(([key, option]) => (
-                <label
-                  key={key}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    rootCause === key
-                      ? 'border-primary bg-primary/5'
-                      : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <RadioGroupItem value={key} className="mt-0.5" />
-                  <div className="flex-1">
-                    <span className="font-medium text-sm">{option.label}</span>
-                    <p className="text-xs text-muted-foreground">{option.description}</p>
-                  </div>
-                </label>
-              ))}
-            </RadioGroup>
+            {/* Selected root causes preview */}
+            {selectedRootCauses.length > 0 && (
+              <div className="flex flex-wrap gap-2 p-3 rounded-lg border bg-muted/30">
+                {selectedRootCauses.map((key) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                    onClick={() => toggleRootCause(key)}
+                  >
+                    {ROOT_CAUSE_OPTIONS[key].label}
+                    <span className="text-current/70">×</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(ROOT_CAUSE_OPTIONS).map(([key, option]) => {
+                const isSelected = selectedRootCauses.includes(key as RootCauseType);
+                return (
+                  <label
+                    key={key}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleRootCause(key as RootCauseType)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium text-sm">{option.label}</span>
+                      <p className="text-xs text-muted-foreground">{option.description}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           {/* Auto-Computed Flags (read-only) */}
@@ -499,10 +525,19 @@ export function ExtensionEnrichmentDialog({
                     {AVOIDABILITY_OPTIONS[key].label}
                   </span>
                 ))}
-                <span className="text-muted-foreground">•</span>
-                <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                  {ROOT_CAUSE_OPTIONS[rootCause as RootCauseType].label}
-                </span>
+                {selectedRootCauses.length > 0 && (
+                  <>
+                    <span className="text-muted-foreground">•</span>
+                    {selectedRootCauses.map((key) => (
+                      <span
+                        key={key}
+                        className="px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                      >
+                        {ROOT_CAUSE_OPTIONS[key].label}
+                      </span>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}

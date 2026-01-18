@@ -17,7 +17,7 @@ import {
 
 export interface ExtensionEnrichmentSuggestion {
   avoidabilities: AvoidabilityType[];
-  rootCause: RootCauseType;
+  rootCauses: RootCauseType[];
   reasoning: string;
 }
 
@@ -89,7 +89,7 @@ function parseJsonResponse(content: string): Record<string, unknown> {
     // Return safe defaults
     return {
       avoidabilities: ['partially_avoidable'],
-      rootCause: 'poor_estimation',
+      rootCauses: ['poor_estimation'],
       reasoning: 'Could not parse AI response',
     };
   }
@@ -118,10 +118,18 @@ function sanitizeSuggestion(raw: Record<string, unknown>): ExtensionEnrichmentSu
     avoidabilities = ['partially_avoidable'];
   }
 
-  // Validate root cause
-  const rootCause = validRootCauses.includes(raw.rootCause as string)
-    ? (raw.rootCause as RootCauseType)
-    : 'poor_estimation';
+  // Validate rootCauses array
+  let rootCauses: RootCauseType[] = [];
+  if (Array.isArray(raw.rootCauses)) {
+    rootCauses = raw.rootCauses.filter(
+      (r): r is RootCauseType => validRootCauses.includes(r as string)
+    );
+  }
+
+  // Default to poor_estimation if nothing valid
+  if (rootCauses.length === 0) {
+    rootCauses = ['poor_estimation'];
+  }
 
   // Get reasoning
   const reasoning = typeof raw.reasoning === 'string'
@@ -130,7 +138,7 @@ function sanitizeSuggestion(raw: Record<string, unknown>): ExtensionEnrichmentSu
 
   return {
     avoidabilities,
-    rootCause,
+    rootCauses,
     reasoning,
   };
 }

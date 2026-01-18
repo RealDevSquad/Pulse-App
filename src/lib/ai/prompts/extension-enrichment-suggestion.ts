@@ -30,6 +30,7 @@ Guidelines:
 - Consider the context (task title, days extended)
 - Be empathetic but honest about avoidability
 - Multiple avoidability factors can apply to a single extension request
+- Multiple root causes can apply to a single extension request
 - When unclear, lean toward lower avoidability weights
 - Return valid JSON only
 
@@ -51,7 +52,7 @@ export const EXTENSION_ENRICHMENT_TEMPLATE = `Analyze this extension request and
 
 Return a JSON object with these fields:
 - avoidabilities: array of 1-3 avoidability keys that apply (e.g., ["didnt_ask_for_help", "over_commitment"])
-- rootCause: one of the root cause keys above
+- rootCauses: array of 1-3 root cause keys that apply (e.g., ["technical_complexity", "knowledge_gap"])
 - reasoning: brief explanation of your classification (1-2 sentences)
 
 Consider:

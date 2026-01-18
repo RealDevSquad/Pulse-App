@@ -19,8 +19,8 @@ import { generateExtensionEnrichmentSuggestion } from '@/lib/ai/chains/extension
  * - daysExtended?: number
  *
  * Response:
- * - avoidability: AvoidabilityType
- * - rootCause: RootCauseType
+ * - avoidabilities: AvoidabilityType[]
+ * - rootCauses: RootCauseType[]
  * - reasoning: string
  */
 export async function POST(request: NextRequest) {

@@ -121,8 +121,11 @@
   body {
     @apply bg-background text-foreground;
   }
-  button,
-  [role="button"] {
-    cursor: pointer;
-  }
+}
+
+/* Ensure cursor pointer on interactive elements */
+button,
+[role="button"],
+a {
+  cursor: pointer;
 }

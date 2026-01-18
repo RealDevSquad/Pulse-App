@@ -6,7 +6,6 @@ import { ArrowRight, Check, Loader2, AlertCircle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -101,7 +100,7 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
 
   // Form state
   const [selectedAvoidabilities, setSelectedAvoidabilities] = useState<AvoidabilityType[]>([]);
-  const [rootCause, setRootCause] = useState<RootCauseType | ''>('');
+  const [selectedRootCauses, setSelectedRootCauses] = useState<RootCauseType[]>([]);
   const [notes, setNotes] = useState('');
 
   // AI suggestion state
@@ -159,7 +158,7 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
 
   const openBulkDialog = () => {
     setSelectedAvoidabilities([]);
-    setRootCause('');
+    setSelectedRootCauses([]);
     setNotes('');
     setSubmitResult(null);
     setAiApplied(false);
@@ -198,7 +197,7 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
       if (response.ok) {
         const suggestion = await response.json();
         setSelectedAvoidabilities(suggestion.avoidabilities || []);
-        setRootCause(suggestion.rootCause || '');
+        setSelectedRootCauses(suggestion.rootCauses || []);
         setAiReasoning(suggestion.reasoning || '');
         setAiApplied(true);
       }
@@ -217,8 +216,16 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
     );
   };
 
+  const toggleRootCause = (rootCause: RootCauseType) => {
+    setSelectedRootCauses((prev) =>
+      prev.includes(rootCause)
+        ? prev.filter((r) => r !== rootCause)
+        : [...prev, rootCause]
+    );
+  };
+
   const handleBulkSubmit = async () => {
-    if (selectedAvoidabilities.length === 0 || !rootCause || selectedIds.size === 0) return;
+    if (selectedAvoidabilities.length === 0 || selectedRootCauses.length === 0 || selectedIds.size === 0) return;
 
     setIsSubmitting(true);
     setSubmitResult(null);
@@ -232,7 +239,7 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
           taskId: er.taskId,
           userId: er.assignee,
           avoidabilities: selectedAvoidabilities,
-          rootCause,
+          rootCauses: selectedRootCauses,
           notes: notes.trim() || undefined,
         };
       });
@@ -271,7 +278,8 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
                 avoidabilities: selectedAvoidabilities,
                 avoidabilityCount: selectedAvoidabilities.length,
                 maxAvoidabilityWeight: maxWeight,
-                rootCause: rootCause as RootCauseType,
+                rootCauses: selectedRootCauses,
+                rootCauseCount: selectedRootCauses.length,
                 flags: {
                   repeatOffender: false,
                   sameTaskRepeat: false,
@@ -297,7 +305,7 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
   };
 
   const avoidabilityByWeight = getAvoidabilityByWeight();
-  const canSubmit = selectedAvoidabilities.length > 0 && rootCause !== '';
+  const canSubmit = selectedAvoidabilities.length > 0 && selectedRootCauses.length > 0;
 
   return (
     <div className="space-y-4">
@@ -591,30 +599,52 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
                 </div>
               </div>
 
-              {/* Root Cause */}
+              {/* Root Causes - Multi-select */}
               <div className="space-y-3">
                 <Label className="text-base font-medium">
-                  Root Cause <span className="text-red-500">*</span>
+                  Root Causes <span className="text-red-500">*</span>
                 </Label>
-                <RadioGroup
-                  value={rootCause}
-                  onValueChange={(value: string) => setRootCause(value as RootCauseType)}
-                  className="grid grid-cols-2 gap-2"
-                >
-                  {Object.entries(ROOT_CAUSE_OPTIONS).map(([key, option]) => (
-                    <label
-                      key={key}
-                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-sm ${
-                        rootCause === key
-                          ? 'border-primary bg-primary/5'
-                          : 'hover:bg-muted/50'
-                      }`}
-                    >
-                      <RadioGroupItem value={key} />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
-                </RadioGroup>
+                <p className="text-sm text-muted-foreground">
+                  Select all root causes that apply to these extension requests
+                </p>
+
+                {/* Selected root causes preview */}
+                {selectedRootCauses.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border bg-muted/30">
+                    {selectedRootCauses.map((key) => (
+                      <span
+                        key={key}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                        onClick={() => toggleRootCause(key)}
+                      >
+                        {ROOT_CAUSE_OPTIONS[key].label}
+                        <span className="text-current/70">×</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(ROOT_CAUSE_OPTIONS).map(([key, option]) => {
+                    const isSelected = selectedRootCauses.includes(key as RootCauseType);
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-sm ${
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleRootCause(key as RootCauseType)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Notes */}
@@ -648,9 +678,14 @@ export function ExtensionEnrichmentBulk({ extensionRequests }: ExtensionEnrichme
                       </span>
                     ))}
                     <span className="text-muted-foreground">•</span>
-                    <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                      {ROOT_CAUSE_OPTIONS[rootCause as RootCauseType].label}
-                    </span>
+                    {selectedRootCauses.map((key) => (
+                      <span
+                        key={key}
+                        className="px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                      >
+                        {ROOT_CAUSE_OPTIONS[key].label}
+                      </span>
+                    ))}
                     <span className="text-muted-foreground">
                       to {selectedIds.size} extension{selectedIds.size !== 1 ? 's' : ''}
                     </span>

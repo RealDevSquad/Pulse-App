@@ -62,7 +62,8 @@ export function ExtensionEnrichmentBadge({
   const primaryAvoidabilityInfo = primaryAvoidability
     ? AVOIDABILITY_OPTIONS[primaryAvoidability]
     : null;
-  const rootCauseInfo = ROOT_CAUSE_OPTIONS[enrichment.rootCause as RootCauseType];
+  const primaryRootCause = enrichment.rootCauses[0];
+  const primaryRootCauseInfo = primaryRootCause ? ROOT_CAUSE_OPTIONS[primaryRootCause] : null;
   const hasFlags =
     enrichment.flags.repeatOffender ||
     enrichment.flags.sameTaskRepeat ||
@@ -97,7 +98,8 @@ export function ExtensionEnrichmentBadge({
                 {sortedAvoidabilities.map((a) => AVOIDABILITY_OPTIONS[a].label).join(', ')}
               </p>
               <p>
-                <span className="text-muted-foreground">Root Cause:</span> {rootCauseInfo.label}
+                <span className="text-muted-foreground">Root Cause{enrichment.rootCauses.length > 1 ? 's' : ''}:</span>{' '}
+                {enrichment.rootCauses.map((r) => ROOT_CAUSE_OPTIONS[r].label).join(', ')}
               </p>
               {hasFlags && (
                 <div className="pt-1 border-t border-border mt-1">
@@ -131,9 +133,15 @@ export function ExtensionEnrichmentBadge({
             {AVOIDABILITY_OPTIONS[avoidability].label}
           </Badge>
         ))}
-        <Badge variant="outline" className={`${getRootCauseColorClasses()} text-xs`}>
-          {rootCauseInfo.label}
-        </Badge>
+        {enrichment.rootCauses.map((rootCause) => (
+          <Badge
+            key={rootCause}
+            variant="outline"
+            className={`${getRootCauseColorClasses()} text-xs`}
+          >
+            {ROOT_CAUSE_OPTIONS[rootCause].label}
+          </Badge>
+        ))}
       </div>
 
       {/* Flag indicators */}
@@ -190,7 +198,8 @@ export function ExtensionEnrichmentInline({
   const primaryLabel = primaryAvoidability
     ? AVOIDABILITY_OPTIONS[primaryAvoidability].label
     : 'Unknown';
-  const rootCauseInfo = ROOT_CAUSE_OPTIONS[enrichment.rootCause as RootCauseType];
+  const primaryRootCause = enrichment.rootCauses[0];
+  const primaryRootCauseInfo = primaryRootCause ? ROOT_CAUSE_OPTIONS[primaryRootCause] : null;
 
   const textColor =
     enrichment.maxAvoidabilityWeight >= 3
@@ -201,13 +210,15 @@ export function ExtensionEnrichmentInline({
           ? 'text-yellow-600 dark:text-yellow-400'
           : 'text-gray-600 dark:text-gray-400';
 
-  // Show count if multiple avoidabilities
-  const countSuffix = sortedAvoidabilities.length > 1 ? ` +${sortedAvoidabilities.length - 1}` : '';
+  // Show count if multiple
+  const avoidabilityCountSuffix = sortedAvoidabilities.length > 1 ? ` +${sortedAvoidabilities.length - 1}` : '';
+  const rootCauseCountSuffix = enrichment.rootCauses.length > 1 ? ` +${enrichment.rootCauses.length - 1}` : '';
+  const primaryRootCauseLabel = primaryRootCauseInfo?.label ?? 'Unknown';
 
   return (
     <span className={`text-xs ${textColor} flex items-center gap-1`}>
       <CheckCircle2 className="h-3 w-3" />
-      {primaryLabel}{countSuffix} • {rootCauseInfo.label}
+      {primaryLabel}{avoidabilityCountSuffix} • {primaryRootCauseLabel}{rootCauseCountSuffix}
     </span>
   );
 }

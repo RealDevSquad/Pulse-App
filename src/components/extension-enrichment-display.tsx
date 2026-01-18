@@ -153,7 +153,8 @@ export function ExtensionEnrichmentDisplay({
   const primaryAvoidabilityInfo = primaryAvoidability
     ? AVOIDABILITY_OPTIONS[primaryAvoidability]
     : null;
-  const rootCauseInfo = ROOT_CAUSE_OPTIONS[enrichment.rootCause as RootCauseType];
+  const primaryRootCause = enrichment.rootCauses[0];
+  const primaryRootCauseInfo = primaryRootCause ? ROOT_CAUSE_OPTIONS[primaryRootCause] : null;
   const flags = enrichment.flags;
   const hasFlags =
     flags.repeatOffender || flags.sameTaskRepeat || flags.shortInterval || flags.significantDelay;
@@ -168,10 +169,11 @@ export function ExtensionEnrichmentDisplay({
         )}
         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
         <span>Enrichment Analysis</span>
-        {!isOpen && primaryAvoidabilityInfo && (
+        {!isOpen && primaryAvoidabilityInfo && primaryRootCauseInfo && (
           <span className="ml-2 text-muted-foreground font-normal">
             {primaryAvoidabilityInfo.label}
-            {sortedAvoidabilities.length > 1 ? ` +${sortedAvoidabilities.length - 1}` : ''} • {rootCauseInfo.label}
+            {sortedAvoidabilities.length > 1 ? ` +${sortedAvoidabilities.length - 1}` : ''} • {primaryRootCauseInfo.label}
+            {enrichment.rootCauses.length > 1 ? ` +${enrichment.rootCauses.length - 1}` : ''}
           </span>
         )}
       </CollapsibleTrigger>
@@ -199,18 +201,22 @@ export function ExtensionEnrichmentDisplay({
             </div>
           </div>
 
-          {/* Root Cause */}
+          {/* Root Causes */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Root Cause
+              Root Causes ({enrichment.rootCauses.length})
             </p>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={getRootCauseColorClasses()}>
-                {rootCauseInfo.label}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                {rootCauseInfo.description}
-              </span>
+            <div className="space-y-2">
+              {enrichment.rootCauses.map((rootCause) => (
+                <div key={rootCause} className="flex items-center gap-2">
+                  <Badge variant="outline" className={getRootCauseColorClasses()}>
+                    {ROOT_CAUSE_OPTIONS[rootCause].label}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {ROOT_CAUSE_OPTIONS[rootCause].description}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 

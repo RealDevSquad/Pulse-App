@@ -88,7 +88,7 @@ async function computeAutoFlagsForExtension(
  * POST - Create multiple extension enrichment events in batch
  *
  * Request body:
- * - items: Array of { extensionId, taskId, userId, avoidability, rootCause, notes? }
+ * - items: Array of { extensionId, taskId, userId, avoidabilities, rootCauses, notes? }
  *
  * Returns:
  * - results: Array of { extensionId, success, eventId?, error? }
@@ -215,7 +215,8 @@ export async function POST(request: Request) {
           avoidabilities: item.avoidabilities,
           avoidabilityCount: item.avoidabilities.length,
           maxAvoidabilityWeight,
-          rootCause: item.rootCause,
+          rootCauses: item.rootCauses,
+          rootCauseCount: item.rootCauses.length,
           flags,
           timestamp,
         };

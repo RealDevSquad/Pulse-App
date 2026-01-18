@@ -175,8 +175,11 @@ export interface ExtensionEnrichmentEvent {
   /** Max avoidability weight for querying (0-3 scale, uses highest selected) */
   maxAvoidabilityWeight: number;
 
-  /** Root cause classification */
-  rootCause: RootCauseType;
+  /** Root cause classifications (multi-select) */
+  rootCauses: RootCauseType[];
+
+  /** Number of root causes for querying */
+  rootCauseCount: number;
 
   /** Auto-computed flags based on history */
   flags: AutoComputedFlags;
@@ -196,7 +199,7 @@ export interface ExtensionEnrichmentInput {
   taskId: string;
   userId: string;
   avoidabilities: AvoidabilityType[];
-  rootCause: RootCauseType;
+  rootCauses: RootCauseType[];
   notes?: string;
 }
 
@@ -270,17 +273,19 @@ export function validateExtensionEnrichmentInput(
     }
   }
 
-  // Validate rootCause with strict type checking
-  if (!data.rootCause || typeof data.rootCause !== 'string') {
-    return { valid: false, error: 'rootCause is required' };
+  // Validate rootCauses (array) with strict type checking
+  if (!Array.isArray(data.rootCauses) || data.rootCauses.length === 0) {
+    return { valid: false, error: 'At least one root cause is required' };
   }
 
-  if (!isValidRootCause(data.rootCause)) {
-    const validOptions = getRootCauseKeys().join(', ');
-    return {
-      valid: false,
-      error: `Invalid rootCause: "${data.rootCause}". Must be one of: ${validOptions}`,
-    };
+  for (const rootCause of data.rootCauses) {
+    if (!isValidRootCause(rootCause)) {
+      const validOptions = getRootCauseKeys().join(', ');
+      return {
+        valid: false,
+        error: `Invalid rootCause: "${rootCause}". Must be one of: ${validOptions}`,
+      };
+    }
   }
 
   // Validate notes (optional)
@@ -295,7 +300,7 @@ export function validateExtensionEnrichmentInput(
       taskId: data.taskId,
       userId: data.userId,
       avoidabilities: data.avoidabilities as AvoidabilityType[],
-      rootCause: data.rootCause,
+      rootCauses: data.rootCauses as RootCauseType[],
       notes: data.notes as string | undefined,
     },
   };
@@ -433,7 +438,10 @@ export function calculateEnrichmentStats(enrichments: ExtensionEnrichmentEvent[]
     for (const avoidability of enrichment.avoidabilities) {
       byAvoidability[avoidability]++;
     }
-    byRootCause[enrichment.rootCause]++;
+    // Count each root cause factor
+    for (const rootCause of enrichment.rootCauses) {
+      byRootCause[rootCause]++;
+    }
     totalWeight += enrichment.maxAvoidabilityWeight;
 
     if (enrichment.flags.repeatOffender) flagCounts.repeatOffender++;

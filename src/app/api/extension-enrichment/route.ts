@@ -230,7 +230,7 @@ export async function GET(request: Request) {
  * - taskId: string (required) - the associated task ID
  * - userId: string (required) - the assignee user ID
  * - avoidabilities: AvoidabilityType[] (required) - one or more avoidability factors
- * - rootCause: RootCauseType (required)
+ * - rootCauses: RootCauseType[] (required) - one or more root cause classifications
  * - notes?: string (optional)
  *
  * Auto-computed flags will be calculated based on extension request history.
@@ -250,12 +250,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const { extensionId, taskId, userId, avoidabilities, rootCause, notes } = validation.data;
+    const { extensionId, taskId, userId, avoidabilities, rootCauses, notes } = validation.data;
     const timestamp = Date.now();
 
     // Calculate numeric fields for querying
     const avoidabilityCount = avoidabilities.length;
     const maxAvoidabilityWeight = calculateMaxAvoidabilityWeight(avoidabilities);
+    const rootCauseCount = rootCauses.length;
 
     // Compute auto flags
     const flags = await computeAutoFlags(extensionId, taskId, userId);
@@ -273,7 +274,8 @@ export async function POST(request: Request) {
       avoidabilities,
       avoidabilityCount,
       maxAvoidabilityWeight,
-      rootCause,
+      rootCauses,
+      rootCauseCount,
       flags,
       timestamp,
     };
