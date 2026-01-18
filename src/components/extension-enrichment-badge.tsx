@@ -16,7 +16,7 @@ import {
   type AvoidabilityType,
   type RootCauseType,
 } from '@/lib/extension-enrichment-types';
-import { CheckCircle2, AlertTriangle, Circle } from 'lucide-react';
+import { CheckCircle2, Info, Circle } from 'lucide-react';
 
 interface ExtensionEnrichmentBadgeProps {
   enrichment: ExtensionEnrichmentEvent | null | undefined;
@@ -71,8 +71,8 @@ export function ExtensionEnrichmentBadge({
     enrichment.flags.significantDelay;
 
   // Compact mode - icon with tooltip
+  // Always use Info icon to indicate "enriched" - color shows severity
   if (compact) {
-    const Icon = enrichment.maxAvoidabilityWeight >= 2 ? AlertTriangle : CheckCircle2;
     const iconColor =
       enrichment.maxAvoidabilityWeight >= 3
         ? 'text-red-600 dark:text-red-400'
@@ -80,14 +80,14 @@ export function ExtensionEnrichmentBadge({
           ? 'text-orange-600 dark:text-orange-400'
           : enrichment.maxAvoidabilityWeight >= 1
             ? 'text-yellow-600 dark:text-yellow-400'
-            : 'text-gray-500 dark:text-gray-400';
+            : 'text-blue-500 dark:text-blue-400';
 
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className={`${iconColor} cursor-help`}>
-              <Icon className="h-4 w-4" />
+              <Info className="h-4 w-4" />
             </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
