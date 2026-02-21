@@ -703,7 +703,7 @@ export default async function MemberPage({ params }: PageProps) {
               <p className="text-xs sm:text-sm text-muted-foreground">Assigned</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold text-emerald-600">{logsActivity.tasksStarted}</p>
+              <p className="text-xl sm:text-2xl font-bold text-purple-600">{logsActivity.tasksStarted}</p>
               <p className="text-xs sm:text-sm text-muted-foreground">Started</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
@@ -711,7 +711,7 @@ export default async function MemberPage({ params }: PageProps) {
               <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-xl sm:text-2xl font-bold">{logsActivity.taskUpdates}</p>
+              <p className="text-xl sm:text-2xl font-bold text-amber-600">{logsActivity.taskUpdates}</p>
               <p className="text-xs sm:text-sm text-muted-foreground">Updates</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50 col-span-2 sm:col-span-1">
