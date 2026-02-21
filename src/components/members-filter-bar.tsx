@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -296,12 +295,12 @@ export function MembersFilterBar({ filters, hiddenCount = 0, isRoot = false }: M
         <Search className="h-4 w-4" />
       </Button>
 
-      <div className="flex items-center gap-1.5">
-        <Checkbox
+      <div className="flex items-center gap-2">
+        <Switch
           id="hide-superusers"
           checked={filters.hideSuperusers}
           onCheckedChange={(checked) => {
-            router.push(buildUrl(filters, { hideSuperusers: checked === true }));
+            router.push(buildUrl(filters, { hideSuperusers: checked }));
           }}
         />
         <Label htmlFor="hide-superusers" className="text-sm font-medium cursor-pointer whitespace-nowrap">
