@@ -126,10 +126,10 @@ export function AppSidebar({ userId, username, isRoot = false, isAdmin = false }
       { title: 'Availability', url: '/availability', Icon: UsersIcon },
       { title: 'Applications', url: '/applications', Icon: FileTextIcon },
     ] : []),
-    { title: 'Settings', url: '/settings', Icon: SettingsIcon },
   ];
 
   const footerItems = [
+    { title: 'Settings', url: '/settings', Icon: SettingsIcon },
     { title: 'Help', url: '/help', Icon: CircleHelpIcon },
   ];
 
@@ -163,24 +163,26 @@ export function AppSidebar({ userId, username, isRoot = false, isAdmin = false }
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item, index) => (
-                <NavItem
-                  key={item.title}
-                  title={item.title}
-                  url={item.url}
-                  Icon={item.Icon}
-                  isActive={isActive(item.url)}
-                  onClick={handleNavClick}
-                  index={index + navItems.length}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {adminItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item, index) => (
+                  <NavItem
+                    key={item.title}
+                    title={item.title}
+                    url={item.url}
+                    Icon={item.Icon}
+                    isActive={isActive(item.url)}
+                    onClick={handleNavClick}
+                    index={index + navItems.length}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t">
