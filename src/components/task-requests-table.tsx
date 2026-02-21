@@ -19,6 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonPulse } from '@/components/ui/skeleton';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { TaskRequestDetailModal } from '@/components/task-request-detail-modal';
 import { cn } from '@/lib/utils';
 import type { TaskRequest, TaskRequestUser } from '@/types';
@@ -240,9 +241,12 @@ export function TaskRequestsTable({ taskRequests }: TaskRequestsTableProps) {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className="h-24 text-center"
                 >
-                  No task requests found.
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+                    <span>No task requests found</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

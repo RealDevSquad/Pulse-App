@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SkeletonPulse } from '@/components/ui/skeleton';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { TaskRequestDetailModal } from '@/components/task-request-detail-modal';
 import { cn } from '@/lib/utils';
 import type { TaskRequest, TaskRequestUser } from '@/types';
@@ -87,8 +88,9 @@ export function TaskRequestsMobileCards({ taskRequests }: TaskRequestsMobileCard
 
   if (taskRequests.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        No task requests found.
+      <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+        <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+        <span>No task requests found</span>
       </div>
     );
   }

@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { SkeletonPulse } from '@/components/ui/skeleton';
+import { FolderOpenIcon } from '@/components/ui/folder-open';
 import { ApplicationDetailModal } from '@/components/application-detail-modal';
 import { cn } from '@/lib/utils';
 import type { Application, ApplicationStatus } from '@/types';
@@ -203,9 +204,12 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className="h-24 text-center"
                 >
-                  No applications found.
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <FolderOpenIcon size={32} animateOnMount className="text-muted-foreground/50" />
+                    <span>No applications found</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
