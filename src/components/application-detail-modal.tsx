@@ -63,18 +63,18 @@ function getStatusStyle(status: Application['status']) {
     case 'accepted':
       return {
         label: 'Accepted',
-        className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        className: 'border-green-500 text-green-600 bg-transparent dark:text-green-400',
       };
     case 'rejected':
       return {
         label: 'Rejected',
-        className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        className: 'border-red-500 text-red-600 bg-transparent dark:text-red-400',
       };
     case 'pending':
     default:
       return {
         label: 'Pending',
-        className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        className: 'border-yellow-500 text-yellow-600 bg-transparent dark:text-yellow-400',
       };
   }
 }
