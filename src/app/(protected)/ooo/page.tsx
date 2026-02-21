@@ -1,5 +1,5 @@
 import { getCachedOOORequests, getCachedFutureStatuses, type OOOSortField, type SortOrder } from '@/lib/ooo-cache';
-import { ChevronLeft, ChevronRight, Database, FileText, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { FolderOpenIcon } from '@/components/ui/folder-open';
@@ -104,21 +104,9 @@ export default async function OOOPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-3 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Out of Office</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">{total} OOO entries found</p>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4" />
-            <span>requests</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Database className="h-4 w-4 text-blue-500" />
-            <span>usersStatus</span>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Out of Office</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">{total} OOO entries found</p>
       </div>
 
       {/* Future Status Section */}
@@ -172,20 +160,6 @@ export default async function OOOPage({ searchParams }: PageProps) {
               </div>
             )}
 
-            {/* Source indicator */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70 pl-[52px]">
-              {request.source === 'usersStatus' ? (
-                <>
-                  <Database className="h-3 w-3 text-blue-500" />
-                  <span>usersStatus</span>
-                </>
-              ) : (
-                <>
-                  <FileText className="h-3 w-3" />
-                  <span>requests</span>
-                </>
-              )}
-            </div>
           </div>
         ))}
 

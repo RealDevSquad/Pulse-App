@@ -1,7 +1,7 @@
 'use client';
 
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown, Database, FileText } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { FolderOpenIcon } from '@/components/ui/folder-open';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,12 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { TableRowMotion } from '@/components/ui/motion';
 import type { OOOEntry } from '@/lib/ooo-cache';
 
@@ -83,43 +77,6 @@ function isCurrentlyActive(from: number, until: number): boolean {
   return from <= now && until >= now;
 }
 
-function SourceIndicator({ source }: { source: 'requests' | 'usersStatus' }) {
-  const isRequests = source === 'requests';
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-help">
-            {isRequests ? (
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Database className="h-4 w-4 text-blue-500" />
-            )}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-sm">
-            {isRequests ? (
-              <>
-                Source: <strong>requests</strong> collection
-                <br />
-                <span className="text-muted-foreground">OOO request with approval workflow</span>
-              </>
-            ) : (
-              <>
-                Source: <strong>usersStatus</strong> collection
-                <br />
-                <span className="text-muted-foreground">Current user status (active OOO)</span>
-              </>
-            )}
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 function SortableHeader({
   label,
   sortKey,
@@ -153,13 +110,6 @@ function SortableHeader({
 
 function createColumns(filters: FilterState): ColumnDef<OOOEntry>[] {
   return [
-    {
-      id: 'source',
-      header: '',
-      size: 40,
-      enableResizing: false,
-      cell: ({ row }) => <SourceIndicator source={row.original.source} />,
-    },
     {
       id: 'avatar',
       header: '',
