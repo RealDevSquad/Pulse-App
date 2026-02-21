@@ -209,7 +209,7 @@ export default async function MembersPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {users.map((user) => {
           const lastActive = user.lastTaskUpdate || user.lastProgress || undefined;
           const lastActiveText = formatLastActive(lastActive);

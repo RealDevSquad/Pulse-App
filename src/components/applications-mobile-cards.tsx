@@ -75,7 +75,7 @@ export function ApplicationsMobileCards({ applications }: ApplicationsMobileCard
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {applications.map((application) => {
           const fullName = `${application.biodata.firstName} ${application.biodata.lastName}`;
           const location = `${application.location.city}, ${application.location.country}`;
@@ -141,7 +141,7 @@ export function ApplicationsMobileCards({ applications }: ApplicationsMobileCard
 
 export function ApplicationsMobileCardsSkeleton({ count = 5 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="p-4 rounded-lg bg-card border shadow-sm space-y-3">
           {/* Header */}

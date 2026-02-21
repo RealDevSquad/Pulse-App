@@ -135,7 +135,7 @@ export default async function OOOPage({ searchParams }: PageProps) {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {requests.map((request) => (
           <div key={request.id} className="p-4 rounded-lg bg-card border shadow-sm space-y-3 overflow-hidden">
             {/* Header: Avatar + Name + Status */}

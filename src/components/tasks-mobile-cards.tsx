@@ -55,7 +55,7 @@ export function TasksMobileCards({ tasks, isRoot, isAdmin = false, isOverdueTab 
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-3">
       {tasks.map((task) => {
         const statusInfo = getStatusBadgeStyle(task.status);
         const latestActivity = getTaskLatestActivity(task);
@@ -205,7 +205,7 @@ export function TasksMobileCards({ tasks, isRoot, isAdmin = false, isOverdueTab 
 /** Skeleton loading state for mobile cards */
 export function TasksMobileCardsSkeleton({ count = 5 }: { count?: number }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="p-4 rounded-lg bg-card border shadow-sm space-y-3">
           {/* Header: Title + Status */}
