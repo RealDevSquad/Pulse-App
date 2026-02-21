@@ -188,12 +188,12 @@ export function AppSidebar({ userId, username, isRoot = false, isAdmin = false }
       <SidebarFooter className="border-t">
         {username && (
           <div className="px-3 py-2">
-            <Link 
+            <Link
               href={userId ? `/member/${userId}` : '/me'}
               onClick={handleNavClick}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted transition-colors"
+              className="flex items-center gap-2.5 rounded-md px-2 py-2 min-h-[44px] text-sm hover:bg-muted transition-colors"
             >
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0">
                 {username.slice(0, 2).toUpperCase()}
               </div>
               <span className="truncate text-muted-foreground">@{username}</span>
