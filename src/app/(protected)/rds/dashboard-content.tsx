@@ -198,18 +198,18 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
       </FadeIn>
 
       {/* Primary Metrics Cards */}
-      <StaggerContainer className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <StaggerContainer className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StaggerItem>
           <Link href="/members">
             <HoverLift>
               <Card className="cursor-pointer bg-gradient-to-br from-emerald-50 to-white border-emerald-100 dark:from-emerald-950/20 dark:to-background">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-6 pb-1 sm:pb-2">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Active Members</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Active Members</CardTitle>
                   <div className="rounded-full bg-emerald-500/10 p-1.5 sm:p-2">
                     <Users className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
                   </div>
                 </CardHeader>
-                <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl sm:text-3xl font-bold">{activeMembers}</div>
                 </CardContent>
               </Card>
@@ -221,13 +221,13 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
           <Link href="/ooo">
             <HoverLift>
               <Card className="cursor-pointer bg-gradient-to-br from-blue-50 to-white border-blue-100 dark:from-blue-950/20 dark:to-background">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-6 pb-1 sm:pb-2">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">OOO Today</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">OOO Today</CardTitle>
                   <div className="rounded-full bg-blue-500/10 p-1.5 sm:p-2">
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                   </div>
                 </CardHeader>
-                <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl sm:text-3xl font-bold">{oooToday}</div>
                 </CardContent>
               </Card>
@@ -239,13 +239,13 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
           <Link href="/tasks?status=active">
             <HoverLift>
               <Card className="cursor-pointer bg-gradient-to-br from-amber-50 to-white border-amber-100 dark:from-amber-950/20 dark:to-background">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-6 pb-1 sm:pb-2">
-                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Ongoing Tasks</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Ongoing Tasks</CardTitle>
                   <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
                     <ListTodo className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
                   </div>
                 </CardHeader>
-                <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <div className="text-2xl sm:text-3xl font-bold">{ongoingTasks}</div>
                 </CardContent>
               </Card>
@@ -256,13 +256,13 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
         <StaggerItem>
           <HoverLift>
             <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100 dark:from-purple-950/20 dark:to-background">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-6 pb-1 sm:pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Tasks Completed</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Tasks Completed</CardTitle>
                 <div className="rounded-full bg-purple-500/10 p-1.5 sm:p-2">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
                 </div>
               </CardHeader>
-              <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
+              <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                 <div className="text-2xl sm:text-3xl font-bold">{orgHealth.tasksCompleted}</div>
               </CardContent>
             </Card>
