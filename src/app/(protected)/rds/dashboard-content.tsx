@@ -415,12 +415,27 @@ export function DashboardContent({ displayName, activeMembers, oooToday, ongoing
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-                {orgHealth.statusChanges.slice(0, 6).map((status) => (
-                  <div key={status.status} className="text-center p-3 rounded-lg bg-muted/50">
-                    <p className="text-2xl font-bold">{status.count}</p>
-                    <p className="text-xs text-muted-foreground">{status.status.replace('_', ' ')}</p>
-                  </div>
-                ))}
+                {orgHealth.statusChanges.slice(0, 6).map((status) => {
+                  const statusUpper = status.status.toUpperCase();
+                  const colorClass =
+                    statusUpper === 'COMPLETED' || statusUpper === 'DONE' || statusUpper === 'MERGED'
+                      ? 'text-emerald-600'
+                      : statusUpper === 'IN_PROGRESS' || statusUpper === 'VERIFIED'
+                      ? 'text-blue-600'
+                      : statusUpper === 'ASSIGNED'
+                      ? 'text-purple-600'
+                      : statusUpper === 'BLOCKED'
+                      ? 'text-red-600'
+                      : statusUpper === 'NEEDS_REVIEW' || statusUpper === 'IN_REVIEW' || statusUpper === 'SANITY_CHECK'
+                      ? 'text-yellow-600'
+                      : '';
+                  return (
+                    <div key={status.status} className="text-center p-3 rounded-lg bg-muted/50">
+                      <p className={`text-2xl font-bold ${colorClass}`}>{status.count}</p>
+                      <p className="text-xs text-muted-foreground">{status.status.replace('_', ' ')}</p>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
