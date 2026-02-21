@@ -13,9 +13,16 @@ export function AccessDenied({ reason }: AccessDeniedProps) {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Pulse</CardTitle>
-          <CardDescription>Sign in to access the dashboard</CardDescription>
+        <CardHeader className="text-center space-y-4 pb-2">
+          <div className="flex justify-center">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">
+              ⚡
+            </div>
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-bold">Pulse</CardTitle>
+            <CardDescription className="mt-1">Sign in to access the dashboard</CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button asChild className="w-full" size="lg">

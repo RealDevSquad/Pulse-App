@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Activity, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   searchParams: Promise<{ reason?: string }>;
@@ -16,8 +16,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <CardHeader className="text-center space-y-4 pb-2">
           {/* Logo */}
           <div className="flex justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Activity className="h-8 w-8 text-primary" />
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl">
+              ⚡
             </div>
           </div>
           <div>
