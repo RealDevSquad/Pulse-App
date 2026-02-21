@@ -802,7 +802,37 @@ export function ActivityCalendar({ data, className = '', filter: externalFilter,
           })}
         </div>
       )}
-      
+
+      {/* Color Legend */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+            <span>Completed</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-blue-600" />
+            <span>Assigned</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-amber-400" />
+            <span>OOO</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm ring-2 ring-inset ring-red-400 bg-transparent" />
+            <span>Extension</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm ring-2 ring-inset ring-emerald-400 bg-transparent" />
+            <span>Progress</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm border-2 border-dashed border-purple-400 bg-transparent" />
+            <span>Profile</span>
+          </div>
+        </div>
+      )}
+
       {/* Mobile: Monthly Calendar View */}
       {isMobile ? (
         <div className="space-y-4">
