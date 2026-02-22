@@ -107,7 +107,7 @@ export default async function ExtensionRequestsPage({ searchParams }: PageProps)
       {(next || cursor) && (
         <div className="sticky bottom-0 flex items-center justify-between gap-4 py-4 border-t bg-background">
           <p className="text-sm text-muted-foreground shrink-0">
-            Showing {extensionRequests.length} of {total}
+            Showing {extensionRequests.length} of {total}{cursor ? ' (continued)' : ''}
           </p>
           <div className="flex gap-2">
             {cursor && (
