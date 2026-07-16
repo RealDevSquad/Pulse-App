@@ -104,10 +104,15 @@ function getArchivedBadge(archived?: boolean) {
     : { label: 'No', className: 'border-green-500 text-green-600 bg-transparent' };
 }
 
-function getRoleBadge(hasRole?: boolean) {
-  return hasRole
-    ? { label: 'Yes', className: 'border-green-500 text-green-600 bg-transparent' }
-    : { label: 'No', className: 'border-muted text-muted-foreground bg-transparent' };
+const ROLE_BADGES = [
+  { key: 'member', label: 'Member', className: 'border-green-500 text-green-600 bg-transparent' },
+  { key: 'super_user', label: 'Super User', className: 'border-purple-500 text-purple-600 bg-transparent' },
+  { key: 'developer', label: 'Developer', className: 'border-blue-500 text-blue-600 bg-transparent' },
+  { key: 'designer', label: 'Designer', className: 'border-pink-500 text-pink-600 bg-transparent' },
+] as const;
+
+function getRoleBadges(roles: UserWithActivity['roles']) {
+  return ROLE_BADGES.filter(({ key }) => roles?.[key]);
 }
 
 function SortableHeader({
@@ -232,38 +237,18 @@ function createColumns(filters: FilterState, isRoot: boolean, hiddenUserIds: Set
     },
     {
       id: 'roles',
-      accessorFn: (row) => row.roles?.member,
       header: 'Roles',
-      size: 120,
+      size: 180,
       cell: ({ row }) => {
-        const memberBadge = getRoleBadge(row.original.roles?.member);
-        const superUserBadge = getRoleBadge(row.original.roles?.super_user);
-        const developerBadge = getRoleBadge(row.original.roles?.developer);
-        const designerBadge = getRoleBadge(row.original.roles?.designer);
+        const roleBadges = getRoleBadges(row.original.roles);
+
         return (
-          <div className="group">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">Member:</span>
-              <Badge variant="outline" className={memberBadge.className}>{memberBadge.label}</Badge>
-            </div>
-            <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-all duration-200 ease-out">
-              <div className="overflow-hidden">
-                <div className="pt-1 space-y-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">Super User:</span>
-                    <Badge variant="outline" className={superUserBadge.className}>{superUserBadge.label}</Badge>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">Developer:</span>
-                    <Badge variant="outline" className={developerBadge.className}>{developerBadge.label}</Badge>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground">Designer:</span>
-                    <Badge variant="outline" className={designerBadge.className}>{designerBadge.label}</Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-wrap gap-1">
+            {roleBadges.map((badge) => (
+              <Badge key={badge.label} variant="outline" className={badge.className}>
+                {badge.label}
+              </Badge>
+            ))}
           </div>
         );
       },
