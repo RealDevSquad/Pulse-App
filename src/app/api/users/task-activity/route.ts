@@ -12,7 +12,7 @@ export interface UserTaskActivity {
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session?.userId || !isUserAllowed(session.userId)) {
+    if (!session?.userId || !(await isUserAllowed(session.userId))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

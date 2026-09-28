@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   // AI features require root access
-  if (!isRootUser(session.userId)) {
+  if (!(await isRootUser(session.userId))) {
     return NextResponse.json({ error: 'AI features not available for this user' }, { status: 403 });
   }
 
