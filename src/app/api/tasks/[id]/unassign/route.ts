@@ -15,7 +15,7 @@ export async function POST(
   try {
     // Check authentication - only root users can write
     const session = await getSession();
-    if (!session?.userId || !isRootUser(session.userId)) {
+    if (!session?.userId || !(await isRootUser(session.userId))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
