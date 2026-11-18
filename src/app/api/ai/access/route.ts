@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   // AI features require: AI enabled globally + user is root
-  const hasAccess = isAIEnabled() && isRootUser(session.userId);
+  const hasAccess = isAIEnabled() && (await isRootUser(session.userId));
 
   return NextResponse.json({ hasAccess });
 }
