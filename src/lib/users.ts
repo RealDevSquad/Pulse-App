@@ -79,7 +79,7 @@ export async function isRootUser(userId: string): Promise<boolean> {
  * Check if a userId is allowed to access admin features (same as isAdmin for now)
  */
 export async function isUserAllowed(userId: string): Promise<boolean> {
-  return isAdminUser(userId);
+  return await isAdminUser(userId);
 }
 
 /**
